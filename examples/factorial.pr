@@ -1,0 +1,4 @@
+(define factorial (lambda (x)
+  (if (equals x 0) 1 (multiply x (factorial (subtract x 1))))))
+
+(factorial 3)
