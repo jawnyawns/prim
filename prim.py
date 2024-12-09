@@ -1,12 +1,13 @@
 import sys
 
+from dataclasses import dataclass
 from enum import Enum
 from typing import (
+    Optional,
     TextIO,
 )
 
 # TODO: Add debug level logging
-# TODO: Add type hints
 # TODO: Refactor tokenization
 
 ### CONSTANTS ###
@@ -18,15 +19,20 @@ class CharSet(Enum):
     RPAREN = set(")")
     SPACE = set(" \n\t")
 
-class Token(Enum):
+class TokenType(Enum):
     LPAREN = "LPAREN"
     RPAREN = "RPAREN"
     SYMBOL = "SYMBOL"
     NUMBER = "NUMBER"
 
+@dataclass(frozen=True)
+class Token:
+    type: TokenType
+    value: str
+
 ### TOKENIZATION ###
 
-def tokenize(source_code: str):
+def tokenize(source_code: str) -> list[Token]:
     tokens = []
     i = 0
     while i < len(source_code):
@@ -39,12 +45,12 @@ def tokenize(source_code: str):
             raise Exception(f"Tokenization error: Last valid token was {tokens[-1]} at position {i}")
     return tokens
 
-def next_token(i, source_code):
+def next_token(i: int, source_code: str) -> Optional[tuple[int, Optional[Token]]]:
     results = [
-        tokenize_space(i, source_code),
-        tokenize_symbol(i, source_code),
-        tokenize_number(i, source_code),
-        tokenize_paren(i, source_code),
+        next_token_space(i, source_code),
+        next_token_symbol(i, source_code),
+        next_token_number(i, source_code),
+        next_token_paren(i, source_code),
     ]
 
     def is_success(result):
@@ -53,50 +59,53 @@ def next_token(i, source_code):
 
     return next(filter(is_success, results), None)
 
-def tokenize_space(i, source_code):
+def next_token_space(i: int, source_code: str) -> tuple[int, Optional[Token]]:
     char = source_code[i]
     if char in CharSet.SPACE.value:
         return i + 1, None
     else:
         return i, None
 
-def tokenize_symbol(i, source_code):
+def next_token_symbol(i: int, source_code: str) -> tuple[int, Optional[Token]]:
     if source_code[i] in CharSet.SYMBOL.value:
         symbol = ""
         while i < len(source_code) and source_code[i] in CharSet.SYMBOL.value:
             symbol += source_code[i]
             i += 1
-        return i, (Token.SYMBOL, symbol)
+        return i, Token(TokenType.SYMBOL, symbol)
     else:
         return i, None
 
-def tokenize_number(i, source_code):
+def next_token_number(i: int, source_code: str) -> tuple[int, Optional[Token]]:
     if source_code[i] in CharSet.NUMBER.value:
         number = ""
         while i < len(source_code) and source_code[i] in CharSet.NUMBER.value:
             number += source_code[i]
             i += 1
-        return i, (Token.NUMBER, int(number))
+        return i, Token(TokenType.NUMBER, number)
     else:
         return i, None
 
-def tokenize_paren(i, source_code):
+def next_token_paren(i: int, source_code: str) -> tuple[int, Optional[Token]]:
     char = source_code[i]
     if char in CharSet.LPAREN.value:
-        return i + 1, (Token.LPAREN, char)
+        return i + 1, Token(TokenType.LPAREN, char)
     elif char in CharSet.RPAREN.value:
-        return i + 1, (Token.RPAREN, char)
+        return i + 1, Token(TokenType.RPAREN, char)
     else:
         return i, None
 
 ### PARSING ###
 
-def parse(tokens):
+class Node:
+    pass
+
+def parse(tokens: list[Token]):
     print("Parsing tokens into AST is not yet implemented!")
 
 ### EVALUATION ###
 
-def evaluate(ast):
+def evaluate(ast: Node):
     print("Evaluating AST is not yet implemented!")
 
 ### MAIN ###
