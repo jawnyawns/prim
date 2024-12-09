@@ -2,19 +2,24 @@
 
 Let's make a language!
 
-## Example usage
+## Usage
 
 ```
-python3 prim.py examples/factorial.pr
+python3 prim.py examples/factorial.prim
 ```
 
-## Language features
+## Features
 
-- Variable binding and recall
-- Lambda functions
+- Booleans
+- Numbers
+- Lists
 - Basic math
-- If/else
-- Input/output
+- Boolean expressions (e.g. equals, less than, etc)
+- Lexically scoped closure-supporting lambda functions (and yes, functions should be values)
+- Variable binding and recall via let expressions only (which are implemented via lambdas, no define!)
+- Lazy-eval by default
+- Dynamic type checking and corresponding runtime errors
+- Core library implemented exclusively in Prim (e.g. if/else, and/or, not, let)
 
 ## License
 
