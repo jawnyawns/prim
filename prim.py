@@ -7,8 +7,16 @@ from typing import (
     Callable,
     Optional,
     TextIO,
+    TypeVar,
     Union,
 )
+
+### UTILS ###
+
+T = TypeVar("T")
+
+def peek(l: list[T]) -> Optional[T]:
+    return l[0] if l else None
 
 ### TOKENIZE ###
 
@@ -80,12 +88,6 @@ class Number(Expression):
 class Identifier(Expression):
     name: str
 
-@dataclass
-class Lambda(Expression):
-    parameters: list[Identifier]
-    body: Expression
-    environment: dict[Identifier, Value]
-
 class Environment:
     def __init__(self, parent: Optional["Environment"] = None):
         self.values = {}
@@ -102,24 +104,59 @@ class Environment:
     def set(self, name: str, value: Value):
         self.values[name] = value
 
+@dataclass
+class Lambda(Expression):
+    parameters: list[Identifier]
+    body: Expression
+    environment: Environment
+
+# TODO: Use deque for popleft() instead of pop(0)
+
 def parse(tokens: list[Token]) -> Optional[Expression]:
     if not tokens:
         return None
-    token = tokens[0]
+    token = tokens.pop(0)
     if token.type is TokenType.SYMBOL:
+        # TODO: Can probably make "true/false" stand-alone "keyword" tokens
         if token.value == "false":
             return Boolean(value=False)
         elif token.value == "true":
             return Boolean(value=True)
         else:
-            logging.error("Cannot parse non-bool symbol")
+            # TODO: How to differentiate identifier from other symbols?
+            return Identifier(name=token.value)
     elif token.type is TokenType.NUMBER:
         return Number(value=token.value)
     elif token.type is TokenType.LPAREN:
-        # TODO: Implement lambda expression parsing
-        pass
+        return parse_lambda(tokens)
     else:
         logging.error("Cannot parse non-symbol token")
+
+def parse_lambda(tokens: list[Token]):
+    if not tokens:
+        raise RuntimeError("Unexpected end of tokens after '('")
+    lambda_token = tokens.pop(0)
+    if lambda_token.type is not TokenType.SYMBOL or lambda_token.value != "lambda":
+        raise RuntimeError(f"Expected 'lambda', got {lambda_token.value}")
+
+    # parse parameters
+    if not tokens or peek(tokens).type is not TokenType.LPAREN:
+        raise RuntimeError("Expected '(' to start parameter list")
+    tokens.pop(0) # remove '('
+    parameters = []
+    while tokens and peek(tokens).type is TokenType.SYMBOL:
+        parameters.append(Identifier(name=tokens.pop(0).value))
+    if not tokens or peek(tokens).type is not TokenType.RPAREN:
+        raise RuntimeError("Expected ')' to end parameter list")
+    tokens.pop(0) # remove ')'
+
+    # parse body
+    body = parse(tokens)
+    if not tokens or peek(tokens).type is not TokenType.RPAREN:
+        raise RuntimeError("Expected ')' to close lambda expression")
+    tokens.pop(0) # remove ')'
+
+    return Lambda(parameters=parameters, body=body, environment={})
 
 ### EVALUATE ###
 
@@ -128,6 +165,8 @@ def evaluate(expression: Expression) -> Value:
         return bool(expression.value)
     elif isinstance(expression, Number):
         return int(expression.value)
+    elif isinstance(expression, Lambda):
+        return f"{expression}"
     else:
         logging.error("Cannot evaluate that expression quite yet")
 
