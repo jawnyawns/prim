@@ -30,7 +30,7 @@ python3 -m unittest discover -s test -p "test_*.py"
 - Dynamic type checking and corresponding runtime errors
 - Core library implemented exclusively in Prim (e.g. if/else, and/or, not, let)
 
-# Things to try out in the future
+## Things to try out in the future
 
 - Lazy-eval by default
 - Support a built-in dict data structure
