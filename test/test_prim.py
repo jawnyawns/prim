@@ -148,6 +148,20 @@ class TestParse(TestCase):
             ),
             Invocation(operator=Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={}), arguments=[Number(1)])
         )
+    
+    def test_builtins(self):
+        self.assertEqual(
+            parse(
+                [
+                    Token(TokenType.LPAREN, '('),
+                    Token(TokenType.SYMBOL, 'add'),
+                    Token(TokenType.NUMBER, '1'),
+                    Token(TokenType.NUMBER, '2'),
+                    Token(TokenType.RPAREN, ')'),
+                ]
+            ),
+            Invocation(operator=Identifier('add'), arguments=[Number(1), Number(2)])
+        )
 
 class TestEvaluate(TestCase):
     def test_boolean(self):
@@ -171,6 +185,14 @@ class TestEvaluate(TestCase):
                 Invocation(operator=Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={}), arguments=[Number(1)])
             ),
             1
+        )
+    
+    def test_builtins(self):
+        self.assertEqual(
+            evaluate(
+                Invocation(operator=Identifier('add'), arguments=[Number(1), Number(2)])
+            ),
+            3
         )
 
 if __name__ == "__main__":

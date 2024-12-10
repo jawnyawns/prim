@@ -73,6 +73,12 @@ def consume_while(start: int, source_code: str, valid_chars: set[str], token_typ
 
 Value = Union[int, bool, Callable, None]
 
+BUILTINS = {
+    "add": lambda a, b: a + b,
+    "subtract": lambda a, b: a - b,
+    "multiply": lambda a, b: a * b,
+}
+
 class Expression:
     pass
 
@@ -186,6 +192,8 @@ def evaluate(expression: Expression, environment: Optional[Environment] = None) 
     elif isinstance(expression, Number):
         return int(expression.value)
     elif isinstance(expression, Identifier):
+        if expression.name in BUILTINS:
+            return expression
         if environment is None:
             raise RuntimeError(f"Undefined identifier: {expression.name}")
         value = environment.get(expression.name)
@@ -203,16 +211,20 @@ def evaluate(expression: Expression, environment: Optional[Environment] = None) 
 def evaluate_invocation(expression: Expression, environment: Environment) -> Value:
     # evaluate callable
     operator = evaluate(expression.operator, environment)
-    if not isinstance(operator, Lambda):
+    if isinstance(operator, Identifier) and operator.name in BUILTINS:
+        arguments = [evaluate(arg, environment) for arg in expression.arguments]
+        return BUILTINS[operator.name](*arguments)
+    elif isinstance(operator, Lambda):
+        # create new environment for lambda execution
+        new_env = Environment(parent=operator.environment)
+        if len(operator.parameters) != len(expression.arguments):
+            raise RuntimeError("Argument count mismatch")
+        for param, arg in zip(operator.parameters, expression.arguments):
+            new_env.set(param.name, evaluate(arg, environment))
+        # evaluate the lambda body in the new environment
+        return evaluate(operator.body, new_env)
+    else:
         raise RuntimeError("Attempting to call a non-lambda expression")
-    # create new environment for lambda execution
-    new_env = Environment(parent=operator.environment)
-    if len(operator.parameters) != len(expression.arguments):
-        raise RuntimeError("Argument count mismatch")
-    for param, arg in zip(operator.parameters, expression.arguments):
-        new_env.set(param.name, evaluate(arg, environment))
-    # evaluate the lambda body in the new environment
-    return evaluate(operator.body, new_env)
 
 ### MAIN ###
 

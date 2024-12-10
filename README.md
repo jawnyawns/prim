@@ -5,10 +5,10 @@ Let's make a language!
 ## Usage
 
 ```
-python3 prim.py examples/factorial.prim
+python3 prim.py examples/lambda_builtins.prim
 ```
 
-## Testing
+## Test
 
 ```
 python3 -m unittest discover -s test -p "test_*.py"
