@@ -162,6 +162,20 @@ class TestParse(TestCase):
             ),
             Invocation(operator=Identifier('add'), arguments=[Number(1), Number(2)])
         )
+    
+    def test_boolean_expressions(self):
+        self.assertEqual(
+            parse(
+                [
+                    Token(TokenType.LPAREN, '('),
+                    Token(TokenType.SYMBOL, 'equals'),
+                    Token(TokenType.NUMBER, '1'),
+                    Token(TokenType.NUMBER, '1'),
+                    Token(TokenType.RPAREN, ')'),
+                ]
+            ),
+            Invocation(operator=Identifier('equals'), arguments=[Number(1), Number(1)])
+        )
 
 class TestEvaluate(TestCase):
     def test_boolean(self):
@@ -193,6 +207,14 @@ class TestEvaluate(TestCase):
                 Invocation(operator=Identifier('add'), arguments=[Number(1), Number(2)])
             ),
             3
+        )
+    
+    def test_boolean_expressions(self):
+        self.assertEqual(
+            evaluate(
+                Invocation(operator=Identifier('equals'), arguments=[Number(1), Number(1)])
+            ),
+            True
         )
 
 if __name__ == "__main__":

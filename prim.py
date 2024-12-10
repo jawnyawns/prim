@@ -77,6 +77,11 @@ BUILTINS = {
     "add": lambda a, b: a + b,
     "subtract": lambda a, b: a - b,
     "multiply": lambda a, b: a * b,
+    "equals": lambda a, b: a == b,
+    "less_than": lambda a, b: a < b,
+    "greater_than": lambda a, b: a > b,
+    "less_than_or_equals": lambda a, b: a <= b,
+    "greater_than_or_equals": lambda a, b: a >= b,
 }
 
 class Expression:
