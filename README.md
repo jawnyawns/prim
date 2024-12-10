@@ -8,6 +8,12 @@ Let's make a language!
 python3 prim.py examples/factorial.prim
 ```
 
+## Testing
+
+```
+python3 -m unittest discover -s test -p "test_*.py"
+```
+
 ## Features
 
 - Booleans

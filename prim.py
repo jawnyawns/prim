@@ -32,7 +32,7 @@ class Token:
     type: TokenType
     value: str
 
-### TOKENIZATION ###
+### TOKENIZE ###
 
 def tokenize(source_code: str) -> list[Token]:
     tokens = []
@@ -97,7 +97,7 @@ def next_token_paren(i: int, source_code: str) -> tuple[int, Optional[Token]]:
     else:
         return i, None
 
-### PARSING ###
+### PARSE ###
 
 class Node:
     pass
@@ -105,7 +105,7 @@ class Node:
 def parse(tokens: list[Token]):
     logging.error("Parsing tokens into AST is not yet implemented!")
 
-### EVALUATION ###
+### EVALUATE ###
 
 def evaluate(ast: Node):
     logging.error("Evaluating AST is not yet implemented!")
