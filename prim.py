@@ -63,6 +63,8 @@ def consume_while(start: int, source_code: str, valid_chars: set[str], token_typ
 
 ### PARSE ###
 
+Value = Union[int, bool, Callable, None]
+
 class Expression:
     pass
 
@@ -74,31 +76,60 @@ class Boolean(Expression):
 class Number(Expression):
     value: int
 
-def parse(tokens: list[Token]) -> Optional[Expression]:
-    expr = None
-    for token in tokens:
-        if token.type is TokenType.SYMBOL:
-            if token.value == "false":
-                expr = Boolean(value=False)
-            elif token.value == "true":
-                expr = Boolean(value=True)
-            else:
-                logging.error("Cannot parse non-bool symbol")
-        elif token.type is TokenType.NUMBER:
-            expr = Number(value=token.value)
+@dataclass
+class Identifier(Expression):
+    name: str
+
+@dataclass
+class Lambda(Expression):
+    parameters: list[Identifier]
+    body: Expression
+    environment: dict[Identifier, Value]
+
+class Environment:
+    def __init__(self, parent: Optional["Environment"] = None):
+        self.values = {}
+        self.parent = parent
+
+    def get(self, name: str) -> Optional[Value]:
+        if name in self.values:
+            return self.values[name]
+        elif self.parent:
+            return self.parent.get(name)
         else:
-            logging.error("Cannot parse non-symbol token")
-    return expr
+            return None
+
+    def set(self, name: str, value: Value):
+        self.values[name] = value
+
+def parse(tokens: list[Token]) -> Optional[Expression]:
+    if not tokens:
+        return None
+    token = tokens[0]
+    if token.type is TokenType.SYMBOL:
+        if token.value == "false":
+            return Boolean(value=False)
+        elif token.value == "true":
+            return Boolean(value=True)
+        else:
+            logging.error("Cannot parse non-bool symbol")
+    elif token.type is TokenType.NUMBER:
+        return Number(value=token.value)
+    elif token.type is TokenType.LPAREN:
+        # TODO: Implement lambda expression parsing
+        pass
+    else:
+        logging.error("Cannot parse non-symbol token")
 
 ### EVALUATE ###
 
-def evaluate(expression: Expression) -> Union[int, float, str, bool, list, Callable, None]:
+def evaluate(expression: Expression) -> Value:
     if isinstance(expression, Boolean):
         return bool(expression.value)
     elif isinstance(expression, Number):
         return int(expression.value)
     else:
-        logging.error("Cannot evaluate expression that is not a boolean")
+        logging.error("Cannot evaluate that expression quite yet")
 
 ### MAIN ###
 
