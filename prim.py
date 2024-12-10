@@ -177,7 +177,7 @@ def parse_lambda(tokens: list[Token]):
         raise RuntimeError("Expected ')' to close lambda expression")
     tokens.pop(0) # remove ')'
 
-    return Lambda(parameters=parameters, body=body, environment={})
+    return Lambda(parameters=parameters, body=body, environment=None)
 
 def parse_invocation(tokens: list[Token]) -> Expression:
     callable_expr = parse(tokens)
@@ -206,14 +206,14 @@ def evaluate(expression: Expression, environment: Optional[Environment] = None) 
             raise RuntimeError(f"Undefined identifier: {expression.name}")
         return value
     elif isinstance(expression, Lambda):
-        return expression
+        return Lambda(parameters=expression.parameters, body=expression.body, environment=environment)
     elif isinstance(expression, Invocation):
         return evaluate_invocation(expression, environment)
     else:
         logging.error("Cannot evaluate that expression quite yet")
         return None
 
-def evaluate_invocation(expression: Expression, environment: Environment) -> Value:
+def evaluate_invocation(expression: Invocation, environment: Environment) -> Value:
     # evaluate callable
     operator = evaluate(expression.operator, environment)
     if isinstance(operator, Identifier) and operator.name in BUILTINS:

@@ -1,0 +1,8 @@
+(
+  (lambda (pair left right)
+    (left (pair 1 2))
+  )
+  (lambda (a b) (lambda (f) (f a b)))
+  (lambda (p) (p (lambda (a b) a)))
+  (lambda (p) (p (lambda (a b) b)))
+)
