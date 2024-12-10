@@ -1,7 +1,6 @@
 (
-  let (
-    (factorial (lambda (n) (if (equals n 0) 1 (multiply n (factorial (subtract n 1))))))
-    (n 5)
+  (lambda (factorial)
+    (factorial 5)
   )
-  (factorial n)
+  (lambda (n) (if (equals n 0) 1 (multiply n (factorial (subtract n 1)))))
 )
