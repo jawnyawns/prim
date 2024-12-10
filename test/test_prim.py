@@ -1,6 +1,8 @@
 from prim import (
     Boolean,
     evaluate,
+    Identifier,
+    Lambda,
     Number,
     parse,
     Token,
@@ -110,6 +112,22 @@ class TestParse(TestCase):
     
     def test_number(self):
         self.assertEqual(parse([Token(TokenType.NUMBER, 123)]), Number(123))
+    
+    def test_lambda(self):
+        self.assertEqual(
+            parse(
+                [
+                    Token(TokenType.LPAREN, '('),
+                    Token(TokenType.SYMBOL, 'lambda'),
+                    Token(TokenType.LPAREN, '('),
+                    Token(TokenType.SYMBOL, 'x'),
+                    Token(TokenType.RPAREN, ')'),
+                    Token(TokenType.SYMBOL, 'x'),
+                    Token(TokenType.RPAREN, ')')
+                ]
+            ),
+            Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={})
+        )
 
 class TestEvaluate(TestCase):
     def test_boolean(self):
@@ -118,6 +136,14 @@ class TestEvaluate(TestCase):
     
     def test_number(self):
         self.assertEqual(evaluate(Number(123)), 123)
+    
+    def test_lambda(self):
+        self.assertEqual(
+            evaluate(
+                Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={})
+            ),
+            Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={})
+        )
 
 if __name__ == "__main__":
     main()
