@@ -1,3 +1,4 @@
+import logging
 import sys
 
 from dataclasses import dataclass
@@ -7,10 +8,11 @@ from typing import (
     TextIO,
 )
 
-# TODO: Add debug level logging
 # TODO: Refactor tokenization
 
 ### CONSTANTS ###
+
+LOG_FORMAT = "[%(levelname)s] %(message)s"
 
 class CharSet(Enum):
     SYMBOL = set("abcdefghijklmnopqrstuvwxyz_")
@@ -101,32 +103,34 @@ class Node:
     pass
 
 def parse(tokens: list[Token]):
-    print("Parsing tokens into AST is not yet implemented!")
+    logging.error("Parsing tokens into AST is not yet implemented!")
 
 ### EVALUATION ###
 
 def evaluate(ast: Node):
-    print("Evaluating AST is not yet implemented!")
+    logging.error("Evaluating AST is not yet implemented!")
 
 ### MAIN ###
 
 def main():
+    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
+    # TODO: What if there is no source file path?
     source_file_path = get_source_file_path(sys.argv)
+    # TODO: What if the file does not exist?
     with open(source_file_path, "r", encoding="utf-8") as source_file:
         execute_source_file(source_file)
 
-def get_source_file_path(argv: list[str]):
+def get_source_file_path(argv: list[str]) -> Optional[str]:
     if len(argv) == 2:
         return argv[1]
     else:
-        print("Usage: python prim.py <FILE_PATH>")
+        logging.error("Usage: python prim.py <FILE_PATH>")
+        return None
 
 def execute_source_file(source_file: TextIO):
     source_code = source_file.read()
     source_tokens = tokenize(source_code)
-
-    print(f"Debug: Tokenization success: {source_tokens}")
-
+    logging.debug(f"Tokenization success: {source_tokens}")
     source_ast = parse(source_tokens)
     evaluate(source_ast)
 
