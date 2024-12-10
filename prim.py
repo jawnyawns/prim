@@ -70,6 +70,10 @@ class Expression:
 class Boolean(Expression):
     value: bool
 
+@dataclass
+class Number(Expression):
+    value: int
+
 def parse(tokens: list[Token]) -> Optional[Expression]:
     expr = None
     for token in tokens:
@@ -80,6 +84,8 @@ def parse(tokens: list[Token]) -> Optional[Expression]:
                 expr = Boolean(value=True)
             else:
                 logging.error("Cannot parse non-bool symbol")
+        elif token.type is TokenType.NUMBER:
+            expr = Number(value=token.value)
         else:
             logging.error("Cannot parse non-symbol token")
     return expr
@@ -88,12 +94,11 @@ def parse(tokens: list[Token]) -> Optional[Expression]:
 
 def evaluate(expression: Expression) -> Union[int, float, str, bool, list, Callable, None]:
     if isinstance(expression, Boolean):
-        return evaluate_boolean(expression)
+        return bool(expression.value)
+    elif isinstance(expression, Number):
+        return int(expression.value)
     else:
         logging.error("Cannot evaluate expression that is not a boolean")
-
-def evaluate_boolean(expression: Boolean) -> bool:
-    return bool(expression.value)
 
 ### MAIN ###
 

@@ -1,6 +1,7 @@
 from prim import (
     Boolean,
     evaluate,
+    Number,
     parse,
     Token,
     tokenize,
@@ -100,14 +101,23 @@ class TestTokenize(TestCase):
         self.assertEqual(actual_tokens, expected_tokens)
 
 class TestParse(TestCase):
+    def test_empty(self):
+        self.assertEqual(parse([]), None)
+
     def test_boolean(self):
         self.assertEqual(parse([Token(TokenType.SYMBOL, "true")]), Boolean(True))
         self.assertEqual(parse([Token(TokenType.SYMBOL, "false")]), Boolean(False))
+    
+    def test_number(self):
+        self.assertEqual(parse([Token(TokenType.NUMBER, 123)]), Number(123))
 
 class TestEvaluate(TestCase):
     def test_boolean(self):
         self.assertEqual(evaluate(Boolean(True)), True)
         self.assertEqual(evaluate(Boolean(False)), False)
+    
+    def test_number(self):
+        self.assertEqual(evaluate(Number(123)), 123)
 
 if __name__ == "__main__":
     main()
