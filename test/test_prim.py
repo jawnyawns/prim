@@ -1,4 +1,7 @@
 from prim import (
+    Boolean,
+    evaluate,
+    parse,
     Token,
     tokenize,
     TokenType,
@@ -95,6 +98,16 @@ class TestTokenize(TestCase):
             Token(TokenType.RPAREN, ")"),
         ]
         self.assertEqual(actual_tokens, expected_tokens)
+
+class TestParse(TestCase):
+    def test_boolean(self):
+        self.assertEqual(parse([Token(TokenType.SYMBOL, "true")]), Boolean(True))
+        self.assertEqual(parse([Token(TokenType.SYMBOL, "false")]), Boolean(False))
+
+class TestEvaluate(TestCase):
+    def test_boolean(self):
+        self.assertEqual(evaluate(Boolean(True)), True)
+        self.assertEqual(evaluate(Boolean(False)), False)
 
 if __name__ == "__main__":
     main()

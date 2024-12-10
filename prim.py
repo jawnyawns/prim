@@ -4,13 +4,13 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from typing import (
+    Callable,
     Optional,
     TextIO,
+    Union,
 )
 
-### CONSTANTS ###
-
-LOG_FORMAT = "[%(levelname)s] %(message)s"
+### TOKENIZE ###
 
 class CharSet(Enum):
     SYMBOL = set("abcdefghijklmnopqrstuvwxyz_")
@@ -29,8 +29,6 @@ class TokenType(Enum):
 class Token:
     type: TokenType
     value: str
-
-### TOKENIZE ###
 
 def tokenize(source_code: str) -> list[Token]:
     tokens = []
@@ -65,21 +63,42 @@ def consume_while(start: int, source_code: str, valid_chars: set[str], token_typ
 
 ### PARSE ###
 
-class Node:
+class Expression:
     pass
 
-def parse(tokens: list[Token]):
-    logging.error("Parsing tokens into AST is not yet implemented!")
+@dataclass
+class Boolean(Expression):
+    value: bool
+
+def parse(tokens: list[Token]) -> Optional[Expression]:
+    expr = None
+    for token in tokens:
+        if token.type is TokenType.SYMBOL:
+            if token.value == "false":
+                expr = Boolean(value=False)
+            elif token.value == "true":
+                expr = Boolean(value=True)
+            else:
+                logging.error("Cannot parse non-bool symbol")
+        else:
+            logging.error("Cannot parse non-symbol token")
+    return expr
 
 ### EVALUATE ###
 
-def evaluate(ast: Node):
-    logging.error("Evaluating AST is not yet implemented!")
+def evaluate(expression: Expression) -> Union[int, float, str, bool, list, Callable, None]:
+    if isinstance(expression, Boolean):
+        return evaluate_boolean(expression)
+    else:
+        logging.error("Cannot evaluate expression that is not a boolean")
+
+def evaluate_boolean(expression: Boolean) -> bool:
+    return bool(expression.value)
 
 ### MAIN ###
 
 def main():
-    logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
+    logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
     # TODO: What if there is no source file path?
     source_file_path = get_source_file_path(sys.argv)
     # TODO: What if the file does not exist?
@@ -95,10 +114,13 @@ def get_source_file_path(argv: list[str]) -> Optional[str]:
 
 def execute_source_file(source_file: TextIO):
     source_code = source_file.read()
-    source_tokens = tokenize(source_code)
-    logging.debug(f"Tokenization success: {source_tokens}")
-    source_ast = parse(source_tokens)
-    evaluate(source_ast)
+    tokens = tokenize(source_code)
+    logging.debug(f"Tokenize result: {tokens}")
+    expression = parse(tokens)
+    logging.debug(f"Parse result: {expression}")
+    if expression:
+        value = evaluate(expression)
+        logging.debug(f"Evaluation result: {value}")
 
 if __name__ == "__main__":
     main()
