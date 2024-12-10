@@ -2,6 +2,7 @@ from prim import (
     Boolean,
     evaluate,
     Identifier,
+    Invocation,
     Lambda,
     Number,
     parse,
@@ -123,10 +124,29 @@ class TestParse(TestCase):
                     Token(TokenType.SYMBOL, 'x'),
                     Token(TokenType.RPAREN, ')'),
                     Token(TokenType.SYMBOL, 'x'),
-                    Token(TokenType.RPAREN, ')')
+                    Token(TokenType.RPAREN, ')'),
                 ]
             ),
             Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={})
+        )
+    
+    def test_lambda_invocation(self):
+        self.assertEqual(
+            parse(
+                [
+                    Token(TokenType.LPAREN, '('),
+                    Token(TokenType.LPAREN, '('),
+                    Token(TokenType.SYMBOL, 'lambda'),
+                    Token(TokenType.LPAREN, '('),
+                    Token(TokenType.SYMBOL, 'x'),
+                    Token(TokenType.RPAREN, ')'),
+                    Token(TokenType.SYMBOL, 'x'),
+                    Token(TokenType.RPAREN, ')'),
+                    Token(TokenType.NUMBER, '1'),
+                    Token(TokenType.RPAREN, ')'),
+                ]
+            ),
+            Invocation(operator=Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={}), arguments=[Number(1)])
         )
 
 class TestEvaluate(TestCase):
@@ -143,6 +163,14 @@ class TestEvaluate(TestCase):
                 Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={})
             ),
             Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={})
+        )
+    
+    def test_lambda_invocation(self):
+        self.assertEqual(
+            evaluate(
+                Invocation(operator=Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment={}), arguments=[Number(1)])
+            ),
+            1
         )
 
 if __name__ == "__main__":

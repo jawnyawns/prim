@@ -110,6 +110,11 @@ class Lambda(Expression):
     body: Expression
     environment: Environment
 
+@dataclass
+class Invocation(Expression):
+    operator: Expression
+    arguments: list[Expression]
+
 # TODO: Use deque for popleft() instead of pop(0)
 
 def parse(tokens: list[Token]) -> Optional[Expression]:
@@ -126,11 +131,16 @@ def parse(tokens: list[Token]) -> Optional[Expression]:
             # TODO: How to differentiate identifier from other symbols?
             return Identifier(name=token.value)
     elif token.type is TokenType.NUMBER:
-        return Number(value=token.value)
+        return Number(value=int(token.value))
     elif token.type is TokenType.LPAREN:
-        return parse_lambda(tokens)
+        operator = peek(tokens)
+        if operator and operator.type is TokenType.SYMBOL and operator.value == "lambda":
+            return parse_lambda(tokens)
+        else:
+            return parse_invocation(tokens)
     else:
         logging.error("Cannot parse non-symbol token")
+        return None
 
 def parse_lambda(tokens: list[Token]):
     if not tokens:
@@ -158,17 +168,51 @@ def parse_lambda(tokens: list[Token]):
 
     return Lambda(parameters=parameters, body=body, environment={})
 
+def parse_invocation(tokens: list[Token]) -> Expression:
+    callable_expr = parse(tokens)
+    arguments = []
+    while tokens and peek(tokens).type is not TokenType.RPAREN:
+        arguments.append(parse(tokens))
+    if not tokens or peek(tokens).type is not TokenType.RPAREN:
+        raise RuntimeError("Expected ')' to close invocation")
+    tokens.pop(0) # remove ')'
+    return Invocation(operator=callable_expr, arguments=arguments)
+
 ### EVALUATE ###
 
-def evaluate(expression: Expression) -> Value:
+def evaluate(expression: Expression, environment: Optional[Environment] = None) -> Value:
     if isinstance(expression, Boolean):
         return bool(expression.value)
     elif isinstance(expression, Number):
         return int(expression.value)
+    elif isinstance(expression, Identifier):
+        if environment is None:
+            raise RuntimeError(f"Undefined identifier: {expression.name}")
+        value = environment.get(expression.name)
+        if value is None:
+            raise RuntimeError(f"Undefined identifier: {expression.name}")
+        return value
     elif isinstance(expression, Lambda):
-        return f"{expression}"
+        return expression
+    elif isinstance(expression, Invocation):
+        return evaluate_invocation(expression, environment)
     else:
         logging.error("Cannot evaluate that expression quite yet")
+        return None
+
+def evaluate_invocation(expression: Expression, environment: Environment) -> Value:
+    # evaluate callable
+    operator = evaluate(expression.operator, environment)
+    if not isinstance(operator, Lambda):
+        raise RuntimeError("Attempting to call a non-lambda expression")
+    # create new environment for lambda execution
+    new_env = Environment(parent=operator.environment)
+    if len(operator.parameters) != len(expression.arguments):
+        raise RuntimeError("Argument count mismatch")
+    for param, arg in zip(operator.parameters, expression.arguments):
+        new_env.set(param.name, evaluate(arg, environment))
+    # evaluate the lambda body in the new environment
+    return evaluate(operator.body, new_env)
 
 ### MAIN ###
 
