@@ -8,8 +8,6 @@ from typing import (
     TextIO,
 )
 
-# TODO: Refactor tokenization
-
 ### CONSTANTS ###
 
 LOG_FORMAT = "[%(levelname)s] %(message)s"
@@ -36,66 +34,34 @@ class Token:
 
 def tokenize(source_code: str) -> list[Token]:
     tokens = []
-    i = 0
-    while i < len(source_code):
-        result = next_token(i, source_code)
-        if result:
-            i, token = result
-            if token:
-                tokens.append(token)
+    index = 0
+    while index < len(source_code):
+        character = source_code[index]
+        if character in CharSet.SPACE.value:
+            # skip whitespace
+            index += 1
+        elif character in CharSet.LPAREN.value:
+            tokens.append(Token(TokenType.LPAREN, character))
+            index += 1
+        elif character in CharSet.RPAREN.value:
+            tokens.append(Token(TokenType.RPAREN, character))
+            index += 1
+        elif character in CharSet.SYMBOL.value:
+            token, index = consume_while(index, source_code, CharSet.SYMBOL.value, TokenType.SYMBOL)
+            tokens.append(token)
+        elif character in CharSet.NUMBER.value:
+            token, index = consume_while(index, source_code, CharSet.NUMBER.value, TokenType.NUMBER)
+            tokens.append(token)
         else:
-            raise Exception(f"Tokenization error: Last valid token was {tokens[-1]} at position {i}")
+            raise ValueError(f"Unexpected character '{character}' at position {index}")
     return tokens
 
-def next_token(i: int, source_code: str) -> Optional[tuple[int, Optional[Token]]]:
-    results = [
-        next_token_space(i, source_code),
-        next_token_symbol(i, source_code),
-        next_token_number(i, source_code),
-        next_token_paren(i, source_code),
-    ]
-
-    def is_success(result):
-        next_i, _ = result
-        return next_i > i
-
-    return next(filter(is_success, results), None)
-
-def next_token_space(i: int, source_code: str) -> tuple[int, Optional[Token]]:
-    char = source_code[i]
-    if char in CharSet.SPACE.value:
-        return i + 1, None
-    else:
-        return i, None
-
-def next_token_symbol(i: int, source_code: str) -> tuple[int, Optional[Token]]:
-    if source_code[i] in CharSet.SYMBOL.value:
-        symbol = ""
-        while i < len(source_code) and source_code[i] in CharSet.SYMBOL.value:
-            symbol += source_code[i]
-            i += 1
-        return i, Token(TokenType.SYMBOL, symbol)
-    else:
-        return i, None
-
-def next_token_number(i: int, source_code: str) -> tuple[int, Optional[Token]]:
-    if source_code[i] in CharSet.NUMBER.value:
-        number = ""
-        while i < len(source_code) and source_code[i] in CharSet.NUMBER.value:
-            number += source_code[i]
-            i += 1
-        return i, Token(TokenType.NUMBER, number)
-    else:
-        return i, None
-
-def next_token_paren(i: int, source_code: str) -> tuple[int, Optional[Token]]:
-    char = source_code[i]
-    if char in CharSet.LPAREN.value:
-        return i + 1, Token(TokenType.LPAREN, char)
-    elif char in CharSet.RPAREN.value:
-        return i + 1, Token(TokenType.RPAREN, char)
-    else:
-        return i, None
+def consume_while(start: int, source_code: str, valid_chars: set[str], token_type: TokenType) -> tuple[Token, int]:
+    end = start
+    while end < len(source_code) and source_code[end] in valid_chars:
+        end += 1
+    value = source_code[start:end]
+    return Token(token_type, value), end
 
 ### PARSE ###
 
