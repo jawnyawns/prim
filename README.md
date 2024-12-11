@@ -29,6 +29,7 @@ python3 -m unittest discover -s test -p "test_*.py"
 - Variable binding and recall via let expressions only (which are implemented via lambdas, no define!)
 - Dynamic type checking and corresponding runtime errors
 - Core library implemented exclusively in Prim (e.g. if/else, and/or, not, let)
+- NO exceptions. Only return types.
 
 ## Things to try out in the future
 

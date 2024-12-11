@@ -6,7 +6,6 @@ from enum import Enum
 from typing import (
     Callable,
     Optional,
-    TextIO,
     TypeVar,
     Union,
 )
@@ -235,28 +234,23 @@ def evaluate_invocation(expression: Invocation, environment: Environment) -> Val
 
 def main():
     logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
-    # TODO: What if there is no source file path?
-    source_file_path = get_source_file_path(sys.argv)
-    # TODO: What if the file does not exist?
-    with open(source_file_path, "r", encoding="utf-8") as source_file:
-        execute_source_file(source_file)
-
-def get_source_file_path(argv: list[str]) -> Optional[str]:
-    if len(argv) == 2:
-        return argv[1]
-    else:
+    source_file_path = sys.argv[1] if len(sys.argv) == 2 else None
+    if not source_file_path:
         logging.error("Usage: python prim.py <FILE_PATH>")
-        return None
-
-def execute_source_file(source_file: TextIO):
-    source_code = source_file.read()
-    tokens = tokenize(source_code)
-    logging.debug(f"Tokenize result: {tokens}")
-    expression = parse(tokens)
-    logging.debug(f"Parse result: {expression}")
-    if expression:
-        value = evaluate(expression)
-        logging.debug(f"Evaluation result: {value}")
+        sys.exit(1)
+    try:
+        with open(source_file_path, "r", encoding="utf-8") as source_file:
+            source_code = source_file.read()
+            tokens = tokenize(source_code)
+            logging.debug(f"Tokenize result: {tokens}")
+            expression = parse(tokens)
+            logging.debug(f"Parse result: {expression}")
+            if expression:
+                value = evaluate(expression)
+                logging.debug(f"Evaluation result: {value}")
+    except FileNotFoundError:
+        logging.error(f"File not found: {source_file_path}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
