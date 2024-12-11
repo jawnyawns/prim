@@ -1,4 +1,5 @@
 import logging
+import string
 import sys
 
 from dataclasses import dataclass
@@ -24,7 +25,7 @@ class CharSet(Enum):
     NUMBER = set("0123456789")
     LPAREN = set("(")
     RPAREN = set(")")
-    SPACE = set(" \n\t")
+    SPACE = set(string.whitespace)
 
 class TokenType(Enum):
     LPAREN = "LPAREN"

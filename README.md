@@ -35,6 +35,7 @@ python3 -m unittest discover -s test -p "test_*.py"
 
 - Lazy-eval by default
 - Support a built-in dict data structure
+- Optional parenths: indentation means "within parenth" and new line means "new item within parenth"
 
 ## License
 
