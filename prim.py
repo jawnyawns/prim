@@ -111,6 +111,7 @@ class Keyword(Enum):
     FALSE = "false"
     NONE = "none"
     LAMBDA = "lambda"
+    IF = "if"
 
 @dataclass
 class BuiltIn:
@@ -172,6 +173,12 @@ class Invocation(Expression):
     operator: Expression
     arguments: list[Expression]
 
+@dataclass
+class If(Expression):
+    condition: Expression
+    consequent: Expression
+    alternative: Expression
+
 def parse(tokens: deque[Token]) -> Optional[Expression]:
     if not tokens:
         return None
@@ -189,6 +196,8 @@ def parse(tokens: deque[Token]) -> Optional[Expression]:
         operator = peek(tokens)
         if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
             return parse_closure(tokens)
+        elif operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.IF.value:
+            return parse_if(tokens)
         else:
             return parse_invocation(tokens)
     else:
@@ -218,6 +227,37 @@ def parse_closure(tokens: deque[Token]):
     tokens.popleft()
 
     return Closure(parameters=parameters, body=body, environment=None)
+
+def parse_if(tokens: deque[Token]) -> If:
+    if not tokens:
+        raise RuntimeError("Unexpected end of tokens after '('")
+    
+    # Remove the 'if' token
+    if_token = tokens.popleft()
+    if not isinstance(if_token, TokenSymbol) or if_token.value != Keyword.IF.value:
+        raise RuntimeError(f"Expected 'if', got {if_token.value}")
+
+    # Parse condition
+    condition = parse(tokens)
+    if condition is None:
+        raise RuntimeError("Expected condition in if expression")
+
+    # Parse consequent (true branch)
+    consequent = parse(tokens)
+    if consequent is None:
+        raise RuntimeError("Expected consequent in if expression")
+
+    # Parse alternative (false branch)
+    alternative = parse(tokens)
+    if alternative is None:
+        raise RuntimeError("Expected alternative in if expression")
+
+    # Ensure the if expression is closed with a right parenthesis
+    if not tokens or not isinstance(peek(tokens), TokenRParen):
+        raise RuntimeError("Expected ')' to close if expression")
+    tokens.popleft()
+
+    return If(condition=condition, consequent=consequent, alternative=alternative)
 
 def parse_invocation(tokens: deque[Token]) -> Expression:
     callable_expr = parse(tokens)
@@ -255,6 +295,12 @@ def evaluate_expression(expression: Expression, environment: Optional[Frame] = N
         return value
     elif isinstance(expression, Closure):
         return Closure(parameters=expression.parameters, body=expression.body, environment=environment)
+    elif isinstance(expression, If):
+        condition = evaluate_expression(expression.condition, environment)
+        if condition:
+            return evaluate_expression(expression.consequent, environment)
+        else:
+            return evaluate_expression(expression.alternative, environment)
     elif isinstance(expression, Invocation):
         return evaluate_invocation(expression, environment)
     else:

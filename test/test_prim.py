@@ -1,18 +1,19 @@
 from prim import (
+    base_environment,
     Boolean,
-    evaluate,
-    evaluate_expression,
-    Identifier,
-    Invocation,
     Closure,
+    evaluate_expression,
+    evaluate,
+    Identifier,
+    If,
     Integer,
+    Invocation,
     parse,
+    TokenInteger,
+    tokenize,
     TokenLParen,
     TokenRParen,
     TokenSymbol,
-    TokenInteger,
-    tokenize,
-    base_environment,
 )
 from collections import deque
 from unittest import (
@@ -196,6 +197,14 @@ class TestParse(TestCase):
             ),
             Invocation(operator=Identifier('eq'), arguments=[Integer(1), Integer(1)])
         )
+    
+    def test_if(self):
+        self.assertEqual(
+            parse(
+                tokenize("(if (lt 1 2) 1 2)")
+            ),
+            If(condition=Invocation(operator=Identifier(name='lt'), arguments=[Integer(value=1), Integer(value=2)]), consequent=Integer(value=1), alternative=Integer(value=2))
+        )
 
 class TestEvaluate(TestCase):
     def test_boolean(self):
@@ -237,6 +246,16 @@ class TestEvaluate(TestCase):
                 Invocation(operator=Identifier('eq'), arguments=[Integer(1), Integer(1)])
             ),
             True
+        )
+    
+    def test_if(self):
+        self.assertEqual(
+            evaluate(
+                parse(
+                    tokenize("(if (lt 1 2) 1 2)")
+                )
+            ),
+            1
         )
 
 if __name__ == "__main__":
