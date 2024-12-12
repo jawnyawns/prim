@@ -28,6 +28,8 @@ RPAREN_CHAR = ")"
 INTEGER_CHAR_START = set(string.digits + "-")
 SYMBOL_CHAR_START = set(string.ascii_lowercase)
 
+INTEGER_CHAR_END = SYMBOL_CHAR_END = {*SPACE_CHARS, LPAREN_CHAR, RPAREN_CHAR}
+
 INTEGER_CHAR_REST = set(string.digits)
 SYMBOL_CHAR_REST = set(string.ascii_lowercase + string.digits + "_")
 
@@ -78,21 +80,33 @@ def tokenize(source_code: str) -> deque[Token]:
             tokens.append(TokenRParen())
             index += 1
         elif character in INTEGER_CHAR_START:
-            text, index = consume_while(index, source_code, INTEGER_CHAR_REST)
-            tokens.append(TokenInteger(value=int(text)))
+            text, index = consume_to_delimiter(index, source_code, INTEGER_CHAR_END)
+            if is_valid_integer(text):
+                tokens.append(TokenInteger(value=int(text)))
+            else:
+                raise ValueError(f"Invalid integer '{text}' at position {index}")
         elif character in SYMBOL_CHAR_START:
-            text, index = consume_while(index, source_code, SYMBOL_CHAR_REST)
-            tokens.append(TokenSymbol(value=text))
+            text, index = consume_to_delimiter(index, source_code, SYMBOL_CHAR_END)
+            if is_valid_symbol(text):
+                tokens.append(TokenSymbol(value=text))
+            else:
+                raise ValueError(f"Invalid symbol '{text}' at position {index}")
         else:
             raise ValueError(f"Unexpected character '{character}' at position {index}")
     return tokens
 
-def consume_while(start: int, source_code: str, valid_chars: set[str]) -> tuple[str, int]:
+def consume_to_delimiter(start: int, source_code: str, end_delimiters: set[str]) -> tuple[str, int]:
     end = start
-    while end < len(source_code) and source_code[end] in valid_chars:
+    while end < len(source_code) and source_code[end] not in end_delimiters:
         end += 1
     text = source_code[start:end]
     return text, end
+
+def is_valid_integer(text: str) -> bool:
+    return text and text[0] in INTEGER_CHAR_START and all(c in INTEGER_CHAR_REST for c in text[1:])
+
+def is_valid_symbol(text: str) -> bool:
+    return text and text[0] in SYMBOL_CHAR_START and all(c in SYMBOL_CHAR_REST for c in text[1:])
 
 ### PARSE ###
 

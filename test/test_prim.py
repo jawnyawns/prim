@@ -25,8 +25,11 @@ class TestTokenize(TestCase):
     def test_symbol(self):
         self.assertEqual(tokenize("x"), deque([TokenSymbol("x")]))
 
-    def test_number(self):
+    def test_integer(self):
         self.assertEqual(tokenize("123"), deque([TokenInteger(123)]))
+    
+    def test_negative_integer(self):
+        self.assertEqual(tokenize("-123"), deque([TokenInteger(-123)]))
 
     def test_parentheses(self):
         self.assertEqual(
@@ -114,7 +117,7 @@ class TestParse(TestCase):
         self.assertEqual(parse(deque([TokenSymbol("true")])), Boolean(True))
         self.assertEqual(parse(deque([TokenSymbol("false")])), Boolean(False))
     
-    def test_number(self):
+    def test_integer(self):
         self.assertEqual(parse(deque([TokenInteger(123)])), Number(123))
     
     def test_lambda(self):
@@ -185,7 +188,7 @@ class TestEvaluate(TestCase):
         self.assertEqual(evaluate(Boolean(True)), True)
         self.assertEqual(evaluate(Boolean(False)), False)
     
-    def test_number(self):
+    def test_integer(self):
         self.assertEqual(evaluate(Number(123)), 123)
     
     def test_lambda(self):
