@@ -4,7 +4,7 @@ from prim import (
     Identifier,
     Invocation,
     Closure,
-    Number,
+    Integer,
     parse,
     TokenLParen,
     TokenRParen,
@@ -21,12 +21,24 @@ from unittest import (
 class TestTokenize(TestCase):
     def test_empty(self):
         self.assertEqual(tokenize(""), deque())
+    
+    def test_invalid_character(self):
+        with self.assertRaises(ValueError):
+            tokenize("$")
 
     def test_symbol(self):
-        self.assertEqual(tokenize("x"), deque([TokenSymbol("x")]))
+        self.assertEqual(tokenize("abc"), deque([TokenSymbol("abc")]))
+    
+    def test_invalid_symbol(self):
+        with self.assertRaises(ValueError):
+            tokenize("(a-c)")
 
     def test_integer(self):
         self.assertEqual(tokenize("123"), deque([TokenInteger(123)]))
+    
+    def test_invalid_integer(self):
+        with self.assertRaises(ValueError):
+            tokenize("1-2")
     
     def test_negative_integer(self):
         self.assertEqual(tokenize("-123"), deque([TokenInteger(-123)]))
@@ -118,7 +130,7 @@ class TestParse(TestCase):
         self.assertEqual(parse(deque([TokenSymbol("false")])), Boolean(False))
     
     def test_integer(self):
-        self.assertEqual(parse(deque([TokenInteger(123)])), Number(123))
+        self.assertEqual(parse(deque([TokenInteger(123)])), Integer(123))
     
     def test_lambda(self):
         self.assertEqual(
@@ -152,7 +164,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Number(1)])
+            Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Integer(1)])
         )
     
     def test_builtins(self):
@@ -166,7 +178,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Identifier('add'), arguments=[Number(1), Number(2)])
+            Invocation(operator=Identifier('add'), arguments=[Integer(1), Integer(2)])
         )
     
     def test_boolean_expressions(self):
@@ -180,7 +192,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Identifier('eq'), arguments=[Number(1), Number(1)])
+            Invocation(operator=Identifier('eq'), arguments=[Integer(1), Integer(1)])
         )
 
 class TestEvaluate(TestCase):
@@ -189,7 +201,7 @@ class TestEvaluate(TestCase):
         self.assertEqual(evaluate(Boolean(False)), False)
     
     def test_integer(self):
-        self.assertEqual(evaluate(Number(123)), 123)
+        self.assertEqual(evaluate(Integer(123)), 123)
     
     def test_lambda(self):
         self.assertEqual(
@@ -202,7 +214,7 @@ class TestEvaluate(TestCase):
     def test_lambda_invocation(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Number(1)])
+                Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Integer(1)])
             ),
             1
         )
@@ -210,7 +222,7 @@ class TestEvaluate(TestCase):
     def test_builtins(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Identifier('add'), arguments=[Number(1), Number(2)])
+                Invocation(operator=Identifier('add'), arguments=[Integer(1), Integer(2)])
             ),
             3
         )
@@ -218,7 +230,7 @@ class TestEvaluate(TestCase):
     def test_boolean_expressions(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Identifier('eq'), arguments=[Number(1), Number(1)])
+                Invocation(operator=Identifier('eq'), arguments=[Integer(1), Integer(1)])
             ),
             True
         )

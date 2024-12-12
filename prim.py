@@ -84,13 +84,13 @@ def tokenize(source_code: str) -> deque[Token]:
             if is_valid_integer(text):
                 tokens.append(TokenInteger(value=int(text)))
             else:
-                raise ValueError(f"Invalid integer '{text}' at position {index}")
+                raise ValueError(f"Invalid integer '{text}' preceding position {index}")
         elif character in SYMBOL_CHAR_START:
             text, index = consume_to_delimiter(index, source_code, SYMBOL_CHAR_END)
             if is_valid_symbol(text):
                 tokens.append(TokenSymbol(value=text))
             else:
-                raise ValueError(f"Invalid symbol '{text}' at position {index}")
+                raise ValueError(f"Invalid symbol '{text}' preceding position {index}")
         else:
             raise ValueError(f"Unexpected character '{character}' at position {index}")
     return tokens
@@ -130,25 +130,10 @@ BUILTINS = {
     "geq": lambda a, b: a >= b,
 }
 
-class Expression:
-    pass
-
-@dataclass
-class Boolean(Expression):
-    value: bool
-
-@dataclass
-class Number(Expression):
-    value: int
-
-@dataclass
-class Identifier(Expression):
-    name: str
-
 class Frame:
     def __init__(self, parent: Optional["Frame"] = None):
-        self.bindings = {}
-        self.parent = parent
+        self.bindings: dict[Identifier, Value] = {}
+        self.parent: "Frame" = parent
 
     def get(self, name: str) -> Optional[Value]:
         if name in self.bindings:
@@ -160,6 +145,21 @@ class Frame:
 
     def set(self, name: str, value: Value):
         self.bindings[name] = value
+
+class Expression:
+    pass
+
+@dataclass
+class Boolean(Expression):
+    value: bool
+
+@dataclass
+class Integer(Expression):
+    value: int
+
+@dataclass
+class Identifier(Expression):
+    name: str
 
 @dataclass
 class Closure(Expression):
@@ -184,7 +184,7 @@ def parse(tokens: deque[Token]) -> Optional[Expression]:
         else:
             return Identifier(name=token.value)
     elif isinstance(token, TokenInteger):
-        return Number(value=int(token.value))
+        return Integer(value=int(token.value))
     elif isinstance(token, TokenLParen):
         operator = peek(tokens)
         if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
@@ -234,7 +234,7 @@ def parse_invocation(tokens: deque[Token]) -> Expression:
 def evaluate(expression: Expression, environment: Optional[Frame] = None) -> Value:
     if isinstance(expression, Boolean):
         return bool(expression.value)
-    elif isinstance(expression, Number):
+    elif isinstance(expression, Integer):
         return int(expression.value)
     elif isinstance(expression, Identifier):
         if expression.name in BUILTINS:
