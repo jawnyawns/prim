@@ -21,15 +21,16 @@ def peek(l: deque[T]) -> Optional[T]:
 
 ### TOKENIZE ###
 
-SPACE_CHARS = set(string.whitespace)
-LPAREN_CHARS = set("(")
-RPAREN_CHARS = set(")")
-INTEGER_CHAR_START = set(string.digits + "-")
-SYMBOL_CHAR_START = set(string.ascii_lowercase)
-INTEGER_CHAR_REST = set(string.digits)
-SYMBOL_CHAR_REST = set(string.ascii_lowercase + string.digits + "_")
-INTEGER_CHAR_END = SPACE_CHARS | LPAREN_CHARS | RPAREN_CHARS
-SYMBOL_CHAR_END = SPACE_CHARS | LPAREN_CHARS | RPAREN_CHARS
+class CharSet(Enum):
+    SPACE = set(string.whitespace)
+    LPAREN = set("(")
+    RPAREN = set(")")
+    INTEGER_START = set(string.digits + "-")
+    INTEGER_REST = set(string.digits)
+    INTEGER_END = set(string.whitespace + "()")
+    SYMBOL_START = set(string.ascii_lowercase)
+    SYMBOL_REST = set(string.ascii_lowercase + string.digits + "_")
+    SYMBOL_END = set(string.whitespace + "()")
 
 @dataclass
 class Token:
@@ -66,22 +67,22 @@ def tokenize(source_code: str) -> deque[Token]:
     index = 0
     while index < len(source_code):
         character = source_code[index]
-        if character in SPACE_CHARS:
+        if character in CharSet.SPACE.value:
             index += 1
-        elif character in LPAREN_CHARS:
+        elif character in CharSet.LPAREN.value:
             tokens.append(TokenLParen())
             index += 1
-        elif character in RPAREN_CHARS:
+        elif character in CharSet.RPAREN.value:
             tokens.append(TokenRParen())
             index += 1
-        elif character in INTEGER_CHAR_START:
-            text, index = consume_until_delimiter(index, source_code, INTEGER_CHAR_END)
+        elif character in CharSet.INTEGER_START.value:
+            text, index = consume_until_delimiter(index, source_code, CharSet.INTEGER_END.value)
             if is_valid_integer(text):
                 tokens.append(TokenInteger(value=int(text)))
             else:
                 raise RuntimeError(f"Invalid integer '{text}' preceding position {index}")
-        elif character in SYMBOL_CHAR_START:
-            text, index = consume_until_delimiter(index, source_code, SYMBOL_CHAR_END)
+        elif character in CharSet.SYMBOL_START.value:
+            text, index = consume_until_delimiter(index, source_code, CharSet.SYMBOL_END.value)
             if is_valid_symbol(text):
                 tokens.append(TokenSymbol(value=text))
             else:
@@ -98,10 +99,10 @@ def consume_until_delimiter(start: int, source_code: str, end_delimiters: set[st
     return text, end
 
 def is_valid_integer(text: str) -> bool:
-    return text and text[0] in INTEGER_CHAR_START and all(c in INTEGER_CHAR_REST for c in text[1:])
+    return text and text[0] in CharSet.INTEGER_START.value and all(c in CharSet.INTEGER_REST.value for c in text[1:])
 
 def is_valid_symbol(text: str) -> bool:
-    return text and text[0] in SYMBOL_CHAR_START and all(c in SYMBOL_CHAR_REST for c in text[1:])
+    return text and text[0] in CharSet.SYMBOL_START.value and all(c in CharSet.SYMBOL_REST.value for c in text[1:])
 
 ### PARSE ###
 
