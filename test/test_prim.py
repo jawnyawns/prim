@@ -145,7 +145,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None)
+            Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
         )
     
     def test_lambda_invocation(self):
@@ -164,7 +164,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Integer(1)])
+            Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None), arguments=[Integer(1)])
         )
     
     def test_builtins(self):
@@ -206,15 +206,15 @@ class TestEvaluate(TestCase):
     def test_lambda(self):
         self.assertEqual(
             evaluate(
-                Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None)
+                Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
             ),
-            Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None)
+            Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
         )
     
     def test_lambda_invocation(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Integer(1)])
+                Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None), arguments=[Integer(1)])
             ),
             1
         )

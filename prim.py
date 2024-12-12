@@ -160,7 +160,7 @@ class Identifier(Expression):
 class Closure(Expression):
     parameters: list[Identifier]
     body: Expression
-    frame: Frame
+    environment: Frame
 
 @dataclass
 class Invocation(Expression):
@@ -212,7 +212,7 @@ def parse_closure(tokens: deque[Token]):
         raise RuntimeError("Expected ')' to close lambda expression")
     tokens.popleft()
 
-    return Closure(parameters=parameters, body=body, frame=None)
+    return Closure(parameters=parameters, body=body, environment=None)
 
 def parse_invocation(tokens: deque[Token]) -> Expression:
     callable_expr = parse(tokens)
@@ -241,7 +241,7 @@ def evaluate(expression: Expression, environment: Optional[Frame] = None) -> Val
             raise RuntimeError(f"Undefined identifier: {expression.name}")
         return value
     elif isinstance(expression, Closure):
-        return Closure(parameters=expression.parameters, body=expression.body, frame=environment)
+        return Closure(parameters=expression.parameters, body=expression.body, environment=environment)
     elif isinstance(expression, Invocation):
         return evaluate_invocation(expression, environment)
     else:
@@ -254,7 +254,7 @@ def evaluate_invocation(expression: Invocation, environment: Frame) -> Value:
         arguments = [evaluate(arg, environment) for arg in expression.arguments]
         return BUILTINS[operator.name](*arguments)
     elif isinstance(operator, Closure):
-        new_env = Frame(parent=operator.frame)
+        new_env = Frame(parent=operator.environment)
         if len(operator.parameters) != len(expression.arguments):
             raise RuntimeError("Argument count mismatch")
         for param, arg in zip(operator.parameters, expression.arguments):
