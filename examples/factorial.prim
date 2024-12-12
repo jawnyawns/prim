@@ -1,6 +1,11 @@
 (
   (lambda (factorial)
-    (factorial 5)
+    (factorial factorial 5)
   )
-  (lambda (n) (if (eq n 0) 1 (mul n (factorial (sub n 1)))))
+  (lambda (factorial n)
+    (if (eq n 0)
+      1
+      (mul n (factorial factorial (sub n 1)))
+    )
+  )
 )

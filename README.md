@@ -24,6 +24,7 @@ python3 -m unittest discover -s test -p "test_*.py"
 
 ## TODO
 
+- Refactor parser to create Pair(Pair(Pair(...))) data structure since syntax of Prim is so uniform?
 - Pairs (try implementing direclty in Prim via lambdas)
 - Lists (try implementing direclty in Prim via lambdas)
 - Variable binding and recall via let expressions only (which are implemented via lambdas, no define!)

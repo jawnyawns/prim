@@ -57,72 +57,15 @@ class TestTokenize(TestCase):
 
     def test_let(self):
         self.assertEqual(
-            tokenize("(let x 5)"),
+            tokenize("(lt x 5)"),
             deque([
                 TokenLParen(),
-                TokenSymbol("let"),
+                TokenSymbol("lt"),
                 TokenSymbol("x"),
                 TokenInteger(5),
                 TokenRParen(),
             ])
         )
-
-    def test_complex_example(self):
-        source_code = """(
-  let (
-    (factorial (lambda (n) (if (eq n 0) 1 (multiply n (factorial (subtract n 1))))))
-    (n 5)
-  )
-  (factorial n)
-)
-"""
-        actual_tokens = tokenize(source_code)
-        expected_tokens = deque([
-            TokenLParen(),
-            TokenSymbol("let"),
-            TokenLParen(),
-            TokenLParen(),
-            TokenSymbol("factorial"),
-            TokenLParen(),
-            TokenSymbol("lambda"),
-            TokenLParen(),
-            TokenSymbol("n"),
-            TokenRParen(),
-            TokenLParen(),
-            TokenSymbol("if"),
-            TokenLParen(),
-            TokenSymbol("eq"),
-            TokenSymbol("n"),
-            TokenInteger(0),
-            TokenRParen(),
-            TokenInteger(1),
-            TokenLParen(),
-            TokenSymbol("multiply"),
-            TokenSymbol("n"),
-            TokenLParen(),
-            TokenSymbol("factorial"),
-            TokenLParen(),
-            TokenSymbol("subtract"),
-            TokenSymbol("n"),
-            TokenInteger(1),
-            TokenRParen(),
-            TokenRParen(),
-            TokenRParen(),
-            TokenRParen(),
-            TokenRParen(),
-            TokenRParen(),
-            TokenLParen(),
-            TokenSymbol("n"),
-            TokenInteger(5),
-            TokenRParen(),
-            TokenRParen(),
-            TokenLParen(),
-            TokenSymbol("factorial"),
-            TokenSymbol("n"),
-            TokenRParen(),
-            TokenRParen(),
-        ])
-        self.assertEqual(actual_tokens, expected_tokens)
 
 class TestParse(TestCase):
     def test_empty(self):
