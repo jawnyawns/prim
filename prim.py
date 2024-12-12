@@ -20,54 +20,125 @@ def peek(l: list[T]) -> Optional[T]:
 
 ### TOKENIZE ###
 
-class CharSet(Enum):
-    SYMBOL = set("abcdefghijklmnopqrstuvwxyz_")
-    NUMBER = set("0123456789")
-    LPAREN = set("(")
-    RPAREN = set(")")
-    SPACE = set(string.whitespace)
+SPACE_CHARS = set(string.whitespace)
+LPAREN_CHAR = "("
+RPAREN_CHAR = ")"
 
-class TokenType(Enum):
-    LPAREN = "LPAREN"
-    RPAREN = "RPAREN"
-    SYMBOL = "SYMBOL"
-    NUMBER = "NUMBER"
+KEYWORD_CHARS = set(string.ascii_lowercase)
 
-@dataclass(frozen=True)
+INTEGER_CHAR_START = set(string.digits + "-")
+IDENTIFIER_CHAR_START = set(string.ascii_lowercase)
+
+INTEGER_CHAR_REST = set(string.digits)
+IDENTIFIER_CHAR_REST = set(string.ascii_lowercase + string.digits + "_")
+
+class Keywords(Enum):
+    # literals
+    TRUE = "true"
+    FALSE = "false"
+    NONE = "none"
+    # reserved keywords
+    LAMBDA = "lambda"
+
+@dataclass
 class Token:
-    type: TokenType
-    value: str
+    pass
+
+# delimiters
+
+@dataclass
+class TokenLParen(Token):
+    pass
+
+@dataclass
+class TokenRParen(Token):
+    pass
+
+# keywords
+
+@dataclass
+class TokenLambda(Token):
+    pass
+
+# literals
+
+@dataclass
+class TokenBoolean(Token):
+    value: bool
+
+@dataclass
+class TokenInteger(Token):
+    value: int
+
+@dataclass
+class TokenNone(Token):
+    pass
+
+# identifiers
+
+@dataclass
+class TokenIdentifier(Token):
+    """
+    Could be either an identifier bound to some runtime value, or,
+    could refer to some built-in operator.
+    """
+    name: str
+
+
+"""
+TODO: Honestly, merging identifier, operator, lambda, boolean, none into SYMBOL makes sense...
+      From a lexing POV these are all identical except that they have different textual values.
+      The parsing can easily read the textual values of these symbols against some keyword list
+      and derive the appropriate ASTNode.
+"""
 
 def tokenize(source_code: str) -> list[Token]:
     tokens = []
     index = 0
     while index < len(source_code):
         character = source_code[index]
-        if character in CharSet.SPACE.value:
-            # skip whitespace
+        if character in SPACE_CHARS:
             index += 1
-        elif character in CharSet.LPAREN.value:
-            tokens.append(Token(TokenType.LPAREN, character))
+            break
+        if character == LPAREN_CHAR:
+            tokens.append(TokenLParen())
             index += 1
-        elif character in CharSet.RPAREN.value:
-            tokens.append(Token(TokenType.RPAREN, character))
+            break
+        if character == RPAREN_CHAR:
+            tokens.append(TokenRParen())
             index += 1
-        elif character in CharSet.SYMBOL.value:
-            token, index = consume_while(index, source_code, CharSet.SYMBOL.value, TokenType.SYMBOL)
-            tokens.append(token)
-        elif character in CharSet.NUMBER.value:
-            token, index = consume_while(index, source_code, CharSet.NUMBER.value, TokenType.NUMBER)
-            tokens.append(token)
-        else:
-            raise ValueError(f"Unexpected character '{character}' at position {index}")
+            break
+        if character in KEYWORD_CHARS:
+            text, index = scan_ahead(index, source_code, KEYWORD_CHARS)
+            if text == Keywords.TRUE:
+                tokens.append(TokenBoolean(value=True))
+                break
+            elif text == Keywords.FALSE:
+                tokens.append(TokenBoolean(value=False))
+                break
+            elif text == Keywords.NONE:
+                tokens.append(TokenNone())
+                break
+            elif text == Keywords.LAMBDA:
+                tokens.append(TokenLambda())
+                break
+        if character in INTEGER_CHAR_START:
+            text, index = scan_ahead(index, source_code, INTEGER_CHAR_REST)
+            tokens.append(TokenInteger(value=int(text)))
+            break
+        if character in IDENTIFIER_CHAR_START:
+            text, index = scan_ahead(index, source_code, IDENTIFIER_CHAR_REST)
+            tokens.append(TokenIdentifier(name=text))
+            break
+        raise ValueError(f"Unexpected character '{character}' at position {index}")
     return tokens
 
-def consume_while(start: int, source_code: str, valid_chars: set[str], token_type: TokenType) -> tuple[Token, int]:
+def scan_ahead(start: int, source_code: str, valid_chars: set[str]) -> tuple[Token, int]:
     end = start
     while end < len(source_code) and source_code[end] in valid_chars:
         end += 1
     value = source_code[start:end]
-    return Token(token_type, value), end
+    return value, end
 
 ### PARSE ###
 
