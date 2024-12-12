@@ -20,22 +20,49 @@ def peek(l: list[T]) -> Optional[T]:
 
 ### TOKENIZE ###
 
-class CharSet(Enum):
-    SYMBOL = set("abcdefghijklmnopqrstuvwxyz_")
-    NUMBER = set("0123456789")
-    LPAREN = set("(")
-    RPAREN = set(")")
-    SPACE = set(string.whitespace)
+SPACE_CHARS = set(string.whitespace)
+LPAREN_CHAR = "("
+RPAREN_CHAR = ")"
 
-class TokenType(Enum):
-    LPAREN = "LPAREN"
-    RPAREN = "RPAREN"
-    SYMBOL = "SYMBOL"
-    NUMBER = "NUMBER"
+INTEGER_CHAR_START = set(string.digits + "-")
+SYMBOL_CHAR_START = set(string.ascii_lowercase)
 
-@dataclass(frozen=True)
+INTEGER_CHAR_REST = set(string.digits)
+SYMBOL_CHAR_REST = set(string.ascii_lowercase + string.digits + "_")
+
+@dataclass
 class Token:
-    type: TokenType
+    pass
+
+@dataclass
+class TokenLParen(Token):
+    pass
+
+@dataclass
+class TokenRParen(Token):
+    pass
+
+@dataclass
+class TokenInteger(Token):
+    value: int
+
+@dataclass
+class TokenSymbol(Token):
+    """
+    A symbol is a string of characters that is a valid standalone datastructure whose value is itself (like a number or boolean).
+    However, a symbol can be used to represent many things.
+    - The name of an identifier
+    - The name of an operator
+    - A reserved keyword such as 'lambda'
+    - A literal such as 'true' or 'none'
+    - A built-in operator such as 'add'
+
+    We merge all these possibilities into the singular concept of symbol because it is useful.
+    - It simplifies lexing, for instance, it removes the need to distinguish between keywords, identifiers, etc.
+    - It makes it easier for parser to convert tokens into a Pair(Pair(Pair(...))) representation.
+    - It allows us to avoid threading verbose data structures through our program, instead, delaying the creation of
+      those more descriptive types (Identifier/Lambda/etc) until they are actualy needed (e.g. during parse/eval).
+    """
     value: str
 
 def tokenize(source_code: str) -> list[Token]:
@@ -43,45 +70,51 @@ def tokenize(source_code: str) -> list[Token]:
     index = 0
     while index < len(source_code):
         character = source_code[index]
-        if character in CharSet.SPACE.value:
-            # skip whitespace
+        if character in SPACE_CHARS:
             index += 1
-        elif character in CharSet.LPAREN.value:
-            tokens.append(Token(TokenType.LPAREN, character))
+        elif character == LPAREN_CHAR:
+            tokens.append(TokenLParen())
             index += 1
-        elif character in CharSet.RPAREN.value:
-            tokens.append(Token(TokenType.RPAREN, character))
+        elif character == RPAREN_CHAR:
+            tokens.append(TokenRParen())
             index += 1
-        elif character in CharSet.SYMBOL.value:
-            token, index = consume_while(index, source_code, CharSet.SYMBOL.value, TokenType.SYMBOL)
-            tokens.append(token)
-        elif character in CharSet.NUMBER.value:
-            token, index = consume_while(index, source_code, CharSet.NUMBER.value, TokenType.NUMBER)
-            tokens.append(token)
+        elif character in INTEGER_CHAR_START:
+            text, index = consume_while(index, source_code, INTEGER_CHAR_REST)
+            tokens.append(TokenInteger(value=int(text)))
+        elif character in SYMBOL_CHAR_START:
+            text, index = consume_while(index, source_code, SYMBOL_CHAR_REST)
+            tokens.append(TokenSymbol(value=text))
         else:
             raise ValueError(f"Unexpected character '{character}' at position {index}")
     return tokens
 
-def consume_while(start: int, source_code: str, valid_chars: set[str], token_type: TokenType) -> tuple[Token, int]:
+def consume_while(start: int, source_code: str, valid_chars: set[str]) -> tuple[str, int]:
     end = start
     while end < len(source_code) and source_code[end] in valid_chars:
         end += 1
-    value = source_code[start:end]
-    return Token(token_type, value), end
+    text = source_code[start:end]
+    return text, end
 
 ### PARSE ###
+
+class Keyword(Enum):
+    TRUE = "true"
+    FALSE = "false"
+    NONE = "none"
+    LAMBDA = "lambda"
 
 Value = Union[int, bool, Callable, None]
 
 BUILTINS = {
     "add": lambda a, b: a + b,
-    "subtract": lambda a, b: a - b,
-    "multiply": lambda a, b: a * b,
-    "equals": lambda a, b: a == b,
-    "less_than": lambda a, b: a < b,
-    "greater_than": lambda a, b: a > b,
-    "less_than_or_equals": lambda a, b: a <= b,
-    "greater_than_or_equals": lambda a, b: a >= b,
+    "sub": lambda a, b: a - b,
+    "mul": lambda a, b: a * b,
+    "div": lambda a, b: a // b,
+    "eq": lambda a, b: a == b,
+    "lt": lambda a, b: a < b,
+    "gt": lambda a, b: a > b,
+    "leq": lambda a, b: a <= b,
+    "geq": lambda a, b: a >= b,
 }
 
 class Expression:
@@ -100,6 +133,8 @@ class Identifier(Expression):
     name: str
 
 class Environment:
+    # TODO: Rename to Frame
+    # TODO: Rename values to bindings
     def __init__(self, parent: Optional["Environment"] = None):
         self.values = {}
         self.parent = parent
@@ -117,6 +152,7 @@ class Environment:
 
 @dataclass
 class Lambda(Expression):
+    # TODO: Rename to Closure
     parameters: list[Identifier]
     body: Expression
     environment: Environment
@@ -132,20 +168,18 @@ def parse(tokens: list[Token]) -> Optional[Expression]:
     if not tokens:
         return None
     token = tokens.pop(0)
-    if token.type is TokenType.SYMBOL:
-        # TODO: Can probably make "true/false" stand-alone "keyword" tokens
-        if token.value == "false":
-            return Boolean(value=False)
-        elif token.value == "true":
+    if isinstance(token, TokenSymbol):
+        if token.value == Keyword.TRUE.value:
             return Boolean(value=True)
+        elif token.value == Keyword.FALSE.value:
+            return Boolean(value=False)
         else:
-            # TODO: How to differentiate identifier from other symbols?
             return Identifier(name=token.value)
-    elif token.type is TokenType.NUMBER:
+    elif isinstance(token, TokenInteger):
         return Number(value=int(token.value))
-    elif token.type is TokenType.LPAREN:
+    elif isinstance(token, TokenLParen):
         operator = peek(tokens)
-        if operator and operator.type is TokenType.SYMBOL and operator.value == "lambda":
+        if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
             return parse_lambda(tokens)
         else:
             return parse_invocation(tokens)
@@ -157,23 +191,23 @@ def parse_lambda(tokens: list[Token]):
     if not tokens:
         raise RuntimeError("Unexpected end of tokens after '('")
     lambda_token = tokens.pop(0)
-    if lambda_token.type is not TokenType.SYMBOL or lambda_token.value != "lambda":
+    if not isinstance(lambda_token, TokenSymbol) or lambda_token.value != Keyword.LAMBDA.value:
         raise RuntimeError(f"Expected 'lambda', got {lambda_token.value}")
 
     # parse parameters
-    if not tokens or peek(tokens).type is not TokenType.LPAREN:
+    if not tokens or not isinstance(peek(tokens), TokenLParen):
         raise RuntimeError("Expected '(' to start parameter list")
     tokens.pop(0) # remove '('
     parameters = []
-    while tokens and peek(tokens).type is TokenType.SYMBOL:
+    while tokens and isinstance(peek(tokens), TokenSymbol):
         parameters.append(Identifier(name=tokens.pop(0).value))
-    if not tokens or peek(tokens).type is not TokenType.RPAREN:
+    if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to end parameter list")
     tokens.pop(0) # remove ')'
 
     # parse body
     body = parse(tokens)
-    if not tokens or peek(tokens).type is not TokenType.RPAREN:
+    if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to close lambda expression")
     tokens.pop(0) # remove ')'
 
@@ -182,9 +216,9 @@ def parse_lambda(tokens: list[Token]):
 def parse_invocation(tokens: list[Token]) -> Expression:
     callable_expr = parse(tokens)
     arguments = []
-    while tokens and peek(tokens).type is not TokenType.RPAREN:
+    while tokens and not isinstance(peek(tokens), TokenRParen):
         arguments.append(parse(tokens))
-    if not tokens or peek(tokens).type is not TokenType.RPAREN:
+    if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to close invocation")
     tokens.pop(0) # remove ')'
     return Invocation(operator=callable_expr, arguments=arguments)

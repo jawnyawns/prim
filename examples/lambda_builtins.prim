@@ -1,6 +1,6 @@
 (
   (lambda (x)
-    (add (multiply (subtract x 1) 2) 3)
+    (add (mul (sub x 1) 2) 3)
   )
   10
 )
