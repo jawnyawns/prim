@@ -132,30 +132,27 @@ class Number(Expression):
 class Identifier(Expression):
     name: str
 
-class Environment:
-    # TODO: Rename to Frame
-    # TODO: Rename values to bindings
-    def __init__(self, parent: Optional["Environment"] = None):
-        self.values = {}
+class Frame:
+    def __init__(self, parent: Optional["Frame"] = None):
+        self.bindings = {}
         self.parent = parent
 
     def get(self, name: str) -> Optional[Value]:
-        if name in self.values:
-            return self.values[name]
+        if name in self.bindings:
+            return self.bindings[name]
         elif self.parent:
             return self.parent.get(name)
         else:
             return None
 
     def set(self, name: str, value: Value):
-        self.values[name] = value
+        self.bindings[name] = value
 
 @dataclass
-class Lambda(Expression):
-    # TODO: Rename to Closure
+class Closure(Expression):
     parameters: list[Identifier]
     body: Expression
-    environment: Environment
+    frame: Frame
 
 @dataclass
 class Invocation(Expression):
@@ -180,14 +177,14 @@ def parse(tokens: list[Token]) -> Optional[Expression]:
     elif isinstance(token, TokenLParen):
         operator = peek(tokens)
         if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
-            return parse_lambda(tokens)
+            return parse_closure(tokens)
         else:
             return parse_invocation(tokens)
     else:
         logging.error("Cannot parse non-symbol token")
         return None
 
-def parse_lambda(tokens: list[Token]):
+def parse_closure(tokens: list[Token]):
     if not tokens:
         raise RuntimeError("Unexpected end of tokens after '('")
     lambda_token = tokens.pop(0)
@@ -211,7 +208,7 @@ def parse_lambda(tokens: list[Token]):
         raise RuntimeError("Expected ')' to close lambda expression")
     tokens.pop(0) # remove ')'
 
-    return Lambda(parameters=parameters, body=body, environment=None)
+    return Closure(parameters=parameters, body=body, frame=None)
 
 def parse_invocation(tokens: list[Token]) -> Expression:
     callable_expr = parse(tokens)
@@ -225,7 +222,7 @@ def parse_invocation(tokens: list[Token]) -> Expression:
 
 ### EVALUATE ###
 
-def evaluate(expression: Expression, environment: Optional[Environment] = None) -> Value:
+def evaluate(expression: Expression, environment: Optional[Frame] = None) -> Value:
     if isinstance(expression, Boolean):
         return bool(expression.value)
     elif isinstance(expression, Number):
@@ -239,23 +236,23 @@ def evaluate(expression: Expression, environment: Optional[Environment] = None) 
         if value is None:
             raise RuntimeError(f"Undefined identifier: {expression.name}")
         return value
-    elif isinstance(expression, Lambda):
-        return Lambda(parameters=expression.parameters, body=expression.body, environment=environment)
+    elif isinstance(expression, Closure):
+        return Closure(parameters=expression.parameters, body=expression.body, frame=environment)
     elif isinstance(expression, Invocation):
         return evaluate_invocation(expression, environment)
     else:
         logging.error("Cannot evaluate that expression quite yet")
         return None
 
-def evaluate_invocation(expression: Invocation, environment: Environment) -> Value:
+def evaluate_invocation(expression: Invocation, environment: Frame) -> Value:
     # evaluate callable
     operator = evaluate(expression.operator, environment)
     if isinstance(operator, Identifier) and operator.name in BUILTINS:
         arguments = [evaluate(arg, environment) for arg in expression.arguments]
         return BUILTINS[operator.name](*arguments)
-    elif isinstance(operator, Lambda):
+    elif isinstance(operator, Closure):
         # create new environment for lambda execution
-        new_env = Environment(parent=operator.environment)
+        new_env = Frame(parent=operator.frame)
         if len(operator.parameters) != len(expression.arguments):
             raise RuntimeError("Argument count mismatch")
         for param, arg in zip(operator.parameters, expression.arguments):

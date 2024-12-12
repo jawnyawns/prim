@@ -3,7 +3,7 @@ from prim import (
     evaluate,
     Identifier,
     Invocation,
-    Lambda,
+    Closure,
     Number,
     parse,
     TokenLParen,
@@ -129,7 +129,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ]
             ),
-            Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
+            Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None)
         )
     
     def test_lambda_invocation(self):
@@ -148,7 +148,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ]
             ),
-            Invocation(operator=Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment=None), arguments=[Number(1)])
+            Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Number(1)])
         )
     
     def test_builtins(self):
@@ -190,15 +190,15 @@ class TestEvaluate(TestCase):
     def test_lambda(self):
         self.assertEqual(
             evaluate(
-                Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
+                Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None)
             ),
-            Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
+            Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None)
         )
     
     def test_lambda_invocation(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Lambda(parameters=[Identifier('x')], body=Identifier('x'), environment=None), arguments=[Number(1)])
+                Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Number(1)])
             ),
             1
         )
