@@ -22,16 +22,14 @@ def peek(l: deque[T]) -> Optional[T]:
 ### TOKENIZE ###
 
 SPACE_CHARS = set(string.whitespace)
-LPAREN_CHAR = "("
-RPAREN_CHAR = ")"
-
+LPAREN_CHARS = set("(")
+RPAREN_CHARS = set(")")
 INTEGER_CHAR_START = set(string.digits + "-")
 SYMBOL_CHAR_START = set(string.ascii_lowercase)
-
-INTEGER_CHAR_END = SYMBOL_CHAR_END = {*SPACE_CHARS, LPAREN_CHAR, RPAREN_CHAR}
-
 INTEGER_CHAR_REST = set(string.digits)
 SYMBOL_CHAR_REST = set(string.ascii_lowercase + string.digits + "_")
+INTEGER_CHAR_END = SPACE_CHARS | LPAREN_CHARS | RPAREN_CHARS
+SYMBOL_CHAR_END = SPACE_CHARS | LPAREN_CHARS | RPAREN_CHARS
 
 @dataclass
 class Token:
@@ -52,17 +50,14 @@ class TokenInteger(Token):
 @dataclass
 class TokenSymbol(Token):
     """
-    A symbol is a sequence of characters that can be used to represent many things:
+    A symbol is a sequence of characters that can represent many things:
     - The name of an identifier
-    - The name of an operator
-    - A reserved keyword such as 'lambda'
-    - A literal such as 'true' or 'none'
-    - A built-in operator such as 'add'
-    
-    Merging all these possibilities into a single token is useful:
-    - Simplifies lexing, obviously
-    - Simplifies parsing, makes it easier to convert tokens into Pair(Pair(Pair(...))) data structure
-    - Avoids threading overly verbose data structures through our program
+    - The name of a built-in operator
+    - The textual representation of a literal
+    - A reserved keyword
+
+    Merging all these into a single token is useful. It simplifies lexing and parsing,
+    and, avoids threading overly verbose data structures throughout our implementation.
     """
     value: str
 
@@ -73,29 +68,29 @@ def tokenize(source_code: str) -> deque[Token]:
         character = source_code[index]
         if character in SPACE_CHARS:
             index += 1
-        elif character == LPAREN_CHAR:
+        elif character in LPAREN_CHARS:
             tokens.append(TokenLParen())
             index += 1
-        elif character == RPAREN_CHAR:
+        elif character in RPAREN_CHARS:
             tokens.append(TokenRParen())
             index += 1
         elif character in INTEGER_CHAR_START:
-            text, index = consume_to_delimiter(index, source_code, INTEGER_CHAR_END)
+            text, index = consume_until_delimiter(index, source_code, INTEGER_CHAR_END)
             if is_valid_integer(text):
                 tokens.append(TokenInteger(value=int(text)))
             else:
-                raise ValueError(f"Invalid integer '{text}' preceding position {index}")
+                raise RuntimeError(f"Invalid integer '{text}' preceding position {index}")
         elif character in SYMBOL_CHAR_START:
-            text, index = consume_to_delimiter(index, source_code, SYMBOL_CHAR_END)
+            text, index = consume_until_delimiter(index, source_code, SYMBOL_CHAR_END)
             if is_valid_symbol(text):
                 tokens.append(TokenSymbol(value=text))
             else:
-                raise ValueError(f"Invalid symbol '{text}' preceding position {index}")
+                raise RuntimeError(f"Invalid symbol '{text}' preceding position {index}")
         else:
-            raise ValueError(f"Unexpected character '{character}' at position {index}")
+            raise RuntimeError(f"Unexpected character '{character}' at position {index}")
     return tokens
 
-def consume_to_delimiter(start: int, source_code: str, end_delimiters: set[str]) -> tuple[str, int]:
+def consume_until_delimiter(start: int, source_code: str, end_delimiters: set[str]) -> tuple[str, int]:
     end = start
     while end < len(source_code) and source_code[end] not in end_delimiters:
         end += 1

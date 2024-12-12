@@ -23,21 +23,21 @@ class TestTokenize(TestCase):
         self.assertEqual(tokenize(""), deque())
     
     def test_invalid_character(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             tokenize("$")
 
     def test_symbol(self):
         self.assertEqual(tokenize("abc"), deque([TokenSymbol("abc")]))
     
     def test_invalid_symbol(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             tokenize("(a-c)")
 
     def test_integer(self):
         self.assertEqual(tokenize("123"), deque([TokenInteger(123)]))
     
     def test_invalid_integer(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             tokenize("1-2")
     
     def test_negative_integer(self):
