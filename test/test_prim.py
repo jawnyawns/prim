@@ -1,6 +1,7 @@
 from prim import (
     Boolean,
     evaluate,
+    evaluate_expression,
     Identifier,
     Invocation,
     Closure,
@@ -11,6 +12,7 @@ from prim import (
     TokenSymbol,
     TokenInteger,
     tokenize,
+    base_environment,
 )
 from collections import deque
 from unittest import (
@@ -132,7 +134,7 @@ class TestParse(TestCase):
     def test_integer(self):
         self.assertEqual(parse(deque([TokenInteger(123)])), Integer(123))
     
-    def test_lambda(self):
+    def test_closure(self):
         self.assertEqual(
             parse(
                 deque([
@@ -148,7 +150,7 @@ class TestParse(TestCase):
             Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
         )
     
-    def test_lambda_invocation(self):
+    def test_invocation(self):
         self.assertEqual(
             parse(
                 deque([
@@ -203,15 +205,17 @@ class TestEvaluate(TestCase):
     def test_integer(self):
         self.assertEqual(evaluate(Integer(123)), 123)
     
-    def test_lambda(self):
+    def test_closure(self):
+        environment = base_environment()
         self.assertEqual(
-            evaluate(
-                Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
+            evaluate_expression(
+                Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None),
+                environment
             ),
-            Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
+            Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=environment)
         )
     
-    def test_lambda_invocation(self):
+    def test_invocation(self):
         self.assertEqual(
             evaluate(
                 Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None), arguments=[Integer(1)])

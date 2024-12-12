@@ -112,18 +112,22 @@ class Keyword(Enum):
     NONE = "none"
     LAMBDA = "lambda"
 
-Value = Union[int, bool, Callable, None]
+@dataclass
+class BuiltIn:
+    function: Callable
+
+Value = Union[int, bool, BuiltIn, None]
 
 BUILTINS = {
-    "add": lambda a, b: a + b,
-    "sub": lambda a, b: a - b,
-    "mul": lambda a, b: a * b,
-    "div": lambda a, b: a // b,
-    "eq": lambda a, b: a == b,
-    "lt": lambda a, b: a < b,
-    "gt": lambda a, b: a > b,
-    "leq": lambda a, b: a <= b,
-    "geq": lambda a, b: a >= b,
+    "add": BuiltIn(lambda a, b: a + b),
+    "sub": BuiltIn(lambda a, b: a - b),
+    "mul": BuiltIn(lambda a, b: a * b),
+    "div": BuiltIn(lambda a, b: a // b),
+    "eq": BuiltIn(lambda a, b: a == b),
+    "lt": BuiltIn(lambda a, b: a < b),
+    "gt": BuiltIn(lambda a, b: a > b),
+    "leq": BuiltIn(lambda a, b: a <= b),
+    "geq": BuiltIn(lambda a, b: a >= b),
 }
 
 class Frame:
@@ -227,14 +231,22 @@ def parse_invocation(tokens: deque[Token]) -> Expression:
 
 ### EVALUATE ###
 
-def evaluate(expression: Expression, environment: Optional[Frame] = None) -> Value:
+def evaluate(expression: Expression) -> Value:
+    environment = base_environment()
+    return evaluate_expression(expression, environment)
+
+def base_environment() -> Frame:
+    environment = Frame()
+    for name, value in BUILTINS.items():
+        environment.set(name, value)
+    return environment
+
+def evaluate_expression(expression: Expression, environment: Optional[Frame] = None) -> Value:
     if isinstance(expression, Boolean):
         return bool(expression.value)
     elif isinstance(expression, Integer):
         return int(expression.value)
     elif isinstance(expression, Identifier):
-        if expression.name in BUILTINS:
-            return expression
         if environment is None:
             raise RuntimeError(f"Undefined identifier: {expression.name}")
         value = environment.get(expression.name)
@@ -250,17 +262,17 @@ def evaluate(expression: Expression, environment: Optional[Frame] = None) -> Val
         return None
 
 def evaluate_invocation(expression: Invocation, environment: Frame) -> Value:
-    operator = evaluate(expression.operator, environment)
-    if isinstance(operator, Identifier) and operator.name in BUILTINS:
-        arguments = [evaluate(arg, environment) for arg in expression.arguments]
-        return BUILTINS[operator.name](*arguments)
+    operator = evaluate_expression(expression.operator, environment)
+    if isinstance(operator, BuiltIn):
+        arguments = [evaluate_expression(arg, environment) for arg in expression.arguments]
+        return operator.function(*arguments)
     elif isinstance(operator, Closure):
-        new_env = Frame(parent=operator.environment)
+        child_environment = Frame(parent=operator.environment)
         if len(operator.parameters) != len(expression.arguments):
             raise RuntimeError("Argument count mismatch")
         for param, arg in zip(operator.parameters, expression.arguments):
-            new_env.set(param.name, evaluate(arg, environment))
-        return evaluate(operator.body, new_env)
+            child_environment.set(param.name, evaluate_expression(arg, environment))
+        return evaluate_expression(operator.body, child_environment)
     else:
         raise RuntimeError("Attempting to call a non-lambda expression")
 
