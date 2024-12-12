@@ -2,6 +2,7 @@ import logging
 import string
 import sys
 
+from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 from typing import (
@@ -15,7 +16,7 @@ from typing import (
 
 T = TypeVar("T")
 
-def peek(l: list[T]) -> Optional[T]:
+def peek(l: deque[T]) -> Optional[T]:
     return l[0] if l else None
 
 ### TOKENIZE ###
@@ -49,24 +50,22 @@ class TokenInteger(Token):
 @dataclass
 class TokenSymbol(Token):
     """
-    A symbol is a string of characters that is a valid standalone datastructure whose value is itself (like a number or boolean).
-    However, a symbol can be used to represent many things.
+    A symbol is a sequence of characters that can be used to represent many things:
     - The name of an identifier
     - The name of an operator
     - A reserved keyword such as 'lambda'
     - A literal such as 'true' or 'none'
     - A built-in operator such as 'add'
-
-    We merge all these possibilities into the singular concept of symbol because it is useful.
-    - It simplifies lexing, for instance, it removes the need to distinguish between keywords, identifiers, etc.
-    - It makes it easier for parser to convert tokens into a Pair(Pair(Pair(...))) representation.
-    - It allows us to avoid threading verbose data structures through our program, instead, delaying the creation of
-      those more descriptive types (Identifier/Lambda/etc) until they are actualy needed (e.g. during parse/eval).
+    
+    Merging all these possibilities into a single token is useful:
+    - Simplifies lexing, obviously
+    - Simplifies parsing, makes it easier to convert tokens into Pair(Pair(Pair(...))) data structure
+    - Avoids threading overly verbose data structures through our program
     """
     value: str
 
-def tokenize(source_code: str) -> list[Token]:
-    tokens = []
+def tokenize(source_code: str) -> deque[Token]:
+    tokens = deque()
     index = 0
     while index < len(source_code):
         character = source_code[index]
@@ -159,12 +158,10 @@ class Invocation(Expression):
     operator: Expression
     arguments: list[Expression]
 
-# TODO: Use deque for popleft() instead of pop(0)
-
-def parse(tokens: list[Token]) -> Optional[Expression]:
+def parse(tokens: deque[Token]) -> Optional[Expression]:
     if not tokens:
         return None
-    token = tokens.pop(0)
+    token = tokens.popleft()
     if isinstance(token, TokenSymbol):
         if token.value == Keyword.TRUE.value:
             return Boolean(value=True)
@@ -184,40 +181,38 @@ def parse(tokens: list[Token]) -> Optional[Expression]:
         logging.error("Cannot parse non-symbol token")
         return None
 
-def parse_closure(tokens: list[Token]):
+def parse_closure(tokens: deque[Token]):
     if not tokens:
         raise RuntimeError("Unexpected end of tokens after '('")
-    lambda_token = tokens.pop(0)
+    lambda_token = tokens.popleft()
     if not isinstance(lambda_token, TokenSymbol) or lambda_token.value != Keyword.LAMBDA.value:
         raise RuntimeError(f"Expected 'lambda', got {lambda_token.value}")
 
-    # parse parameters
     if not tokens or not isinstance(peek(tokens), TokenLParen):
         raise RuntimeError("Expected '(' to start parameter list")
-    tokens.pop(0) # remove '('
     parameters = []
+    tokens.popleft()
     while tokens and isinstance(peek(tokens), TokenSymbol):
-        parameters.append(Identifier(name=tokens.pop(0).value))
+        parameters.append(Identifier(name=tokens.popleft().value))
     if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to end parameter list")
-    tokens.pop(0) # remove ')'
+    tokens.popleft()
 
-    # parse body
     body = parse(tokens)
     if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to close lambda expression")
-    tokens.pop(0) # remove ')'
+    tokens.popleft()
 
     return Closure(parameters=parameters, body=body, frame=None)
 
-def parse_invocation(tokens: list[Token]) -> Expression:
+def parse_invocation(tokens: deque[Token]) -> Expression:
     callable_expr = parse(tokens)
     arguments = []
     while tokens and not isinstance(peek(tokens), TokenRParen):
         arguments.append(parse(tokens))
     if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to close invocation")
-    tokens.pop(0) # remove ')'
+    tokens.popleft()
     return Invocation(operator=callable_expr, arguments=arguments)
 
 ### EVALUATE ###
@@ -245,19 +240,16 @@ def evaluate(expression: Expression, environment: Optional[Frame] = None) -> Val
         return None
 
 def evaluate_invocation(expression: Invocation, environment: Frame) -> Value:
-    # evaluate callable
     operator = evaluate(expression.operator, environment)
     if isinstance(operator, Identifier) and operator.name in BUILTINS:
         arguments = [evaluate(arg, environment) for arg in expression.arguments]
         return BUILTINS[operator.name](*arguments)
     elif isinstance(operator, Closure):
-        # create new environment for lambda execution
         new_env = Frame(parent=operator.frame)
         if len(operator.parameters) != len(expression.arguments):
             raise RuntimeError("Argument count mismatch")
         for param, arg in zip(operator.parameters, expression.arguments):
             new_env.set(param.name, evaluate(arg, environment))
-        # evaluate the lambda body in the new environment
         return evaluate(operator.body, new_env)
     else:
         raise RuntimeError("Attempting to call a non-lambda expression")

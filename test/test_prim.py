@@ -12,6 +12,7 @@ from prim import (
     TokenInteger,
     tokenize,
 )
+from collections import deque
 from unittest import (
     main,
     TestCase,
@@ -19,33 +20,33 @@ from unittest import (
 
 class TestTokenize(TestCase):
     def test_empty(self):
-        self.assertEqual(tokenize(""), [])
+        self.assertEqual(tokenize(""), deque())
 
     def test_symbol(self):
-        self.assertEqual(tokenize("x"), [TokenSymbol("x")])
+        self.assertEqual(tokenize("x"), deque([TokenSymbol("x")]))
 
     def test_number(self):
-        self.assertEqual(tokenize("123"), [TokenInteger(123)])
+        self.assertEqual(tokenize("123"), deque([TokenInteger(123)]))
 
     def test_parentheses(self):
         self.assertEqual(
             tokenize("()"),
-            [
+            deque([
                 TokenLParen(),
                 TokenRParen(),
-            ]
+            ])
         )
 
     def test_let(self):
         self.assertEqual(
             tokenize("(let x 5)"),
-            [
+            deque([
                 TokenLParen(),
                 TokenSymbol("let"),
                 TokenSymbol("x"),
                 TokenInteger(5),
                 TokenRParen(),
-            ]
+            ])
         )
 
     def test_complex_example(self):
@@ -58,7 +59,7 @@ class TestTokenize(TestCase):
 )
 """
         actual_tokens = tokenize(source_code)
-        expected_tokens = [
+        expected_tokens = deque([
             TokenLParen(),
             TokenSymbol("let"),
             TokenLParen(),
@@ -102,24 +103,24 @@ class TestTokenize(TestCase):
             TokenSymbol("n"),
             TokenRParen(),
             TokenRParen(),
-        ]
+        ])
         self.assertEqual(actual_tokens, expected_tokens)
 
 class TestParse(TestCase):
     def test_empty(self):
-        self.assertEqual(parse([]), None)
+        self.assertEqual(parse(deque()), None)
 
     def test_boolean(self):
-        self.assertEqual(parse([TokenSymbol("true")]), Boolean(True))
-        self.assertEqual(parse([TokenSymbol("false")]), Boolean(False))
+        self.assertEqual(parse(deque([TokenSymbol("true")])), Boolean(True))
+        self.assertEqual(parse(deque([TokenSymbol("false")])), Boolean(False))
     
     def test_number(self):
-        self.assertEqual(parse([TokenInteger(123)]), Number(123))
+        self.assertEqual(parse(deque([TokenInteger(123)])), Number(123))
     
     def test_lambda(self):
         self.assertEqual(
             parse(
-                [
+                deque([
                     TokenLParen(),
                     TokenSymbol('lambda'),
                     TokenLParen(),
@@ -127,7 +128,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                     TokenSymbol('x'),
                     TokenRParen(),
-                ]
+                ])
             ),
             Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None)
         )
@@ -135,7 +136,7 @@ class TestParse(TestCase):
     def test_lambda_invocation(self):
         self.assertEqual(
             parse(
-                [
+                deque([
                     TokenLParen(),
                     TokenLParen(),
                     TokenSymbol('lambda'),
@@ -146,7 +147,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                     TokenInteger(1),
                     TokenRParen(),
-                ]
+                ])
             ),
             Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), frame=None), arguments=[Number(1)])
         )
@@ -154,13 +155,13 @@ class TestParse(TestCase):
     def test_builtins(self):
         self.assertEqual(
             parse(
-                [
+                deque([
                     TokenLParen(),
                     TokenSymbol('add'),
                     TokenInteger(1),
                     TokenInteger(2),
                     TokenRParen(),
-                ]
+                ])
             ),
             Invocation(operator=Identifier('add'), arguments=[Number(1), Number(2)])
         )
@@ -168,13 +169,13 @@ class TestParse(TestCase):
     def test_boolean_expressions(self):
         self.assertEqual(
             parse(
-                [
+                deque([
                     TokenLParen(),
                     TokenSymbol('eq'),
                     TokenInteger(1),
                     TokenInteger(1),
                     TokenRParen(),
-                ]
+                ])
             ),
             Invocation(operator=Identifier('eq'), arguments=[Number(1), Number(1)])
         )
