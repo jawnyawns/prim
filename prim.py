@@ -113,27 +113,23 @@ class Keyword(Enum):
     LAMBDA = "lambda"
     IF = "if"
 
-@dataclass
-class BuiltIn:
-    function: Callable
-
-Value = Union[int, bool, BuiltIn, None]
+Value = Union[int, bool, Callable, None]
 
 BUILTINS = {
-    "add": BuiltIn(lambda a, b: a + b),
-    "sub": BuiltIn(lambda a, b: a - b),
-    "mul": BuiltIn(lambda a, b: a * b),
-    "div": BuiltIn(lambda a, b: a // b),
-    "eq": BuiltIn(lambda a, b: a == b),
-    "lt": BuiltIn(lambda a, b: a < b),
-    "gt": BuiltIn(lambda a, b: a > b),
-    "leq": BuiltIn(lambda a, b: a <= b),
-    "geq": BuiltIn(lambda a, b: a >= b),
+    "add": lambda a, b: a + b,
+    "sub": lambda a, b: a - b,
+    "mul": lambda a, b: a * b,
+    "div": lambda a, b: a // b,
+    "eq": lambda a, b: a == b,
+    "lt": lambda a, b: a < b,
+    "gt": lambda a, b: a > b,
+    "leq": lambda a, b: a <= b,
+    "geq": lambda a, b: a >= b,
 }
 
 class Frame:
     def __init__(self, parent: Optional["Frame"] = None):
-        self.bindings: dict[Identifier, Value] = {}
+        self.bindings: dict[str, Value] = {}
         self.parent: "Frame" = parent
 
     def get(self, name: str) -> Optional[Value]:
@@ -151,20 +147,16 @@ class Expression:
     pass
 
 @dataclass
-class Boolean(Expression):
-    value: bool
-
-@dataclass
 class Integer(Expression):
     value: int
 
 @dataclass
-class Identifier(Expression):
-    name: str
+class Symbol(Expression):
+    value: str
 
 @dataclass
 class Closure(Expression):
-    parameters: list[Identifier]
+    parameters: list[str]
     body: Expression
     environment: Frame
 
@@ -184,12 +176,7 @@ def parse(tokens: deque[Token]) -> Optional[Expression]:
         return None
     token = tokens.popleft()
     if isinstance(token, TokenSymbol):
-        if token.value == Keyword.TRUE.value:
-            return Boolean(value=True)
-        elif token.value == Keyword.FALSE.value:
-            return Boolean(value=False)
-        else:
-            return Identifier(name=token.value)
+        return Symbol(token.value)
     elif isinstance(token, TokenInteger):
         return Integer(value=int(token.value))
     elif isinstance(token, TokenLParen):
@@ -210,17 +197,15 @@ def parse_closure(tokens: deque[Token]):
     lambda_token = tokens.popleft()
     if not isinstance(lambda_token, TokenSymbol) or lambda_token.value != Keyword.LAMBDA.value:
         raise RuntimeError(f"Expected 'lambda', got {lambda_token.value}")
-
     if not tokens or not isinstance(peek(tokens), TokenLParen):
         raise RuntimeError("Expected '(' to start parameter list")
     parameters = []
     tokens.popleft()
     while tokens and isinstance(peek(tokens), TokenSymbol):
-        parameters.append(Identifier(name=tokens.popleft().value))
+        parameters.append(tokens.popleft().value)
     if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to end parameter list")
     tokens.popleft()
-
     body = parse(tokens)
     if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to close lambda expression")
@@ -231,28 +216,18 @@ def parse_closure(tokens: deque[Token]):
 def parse_if(tokens: deque[Token]) -> If:
     if not tokens:
         raise RuntimeError("Unexpected end of tokens after '('")
-    
-    # Remove the 'if' token
     if_token = tokens.popleft()
     if not isinstance(if_token, TokenSymbol) or if_token.value != Keyword.IF.value:
         raise RuntimeError(f"Expected 'if', got {if_token.value}")
-
-    # Parse condition
     condition = parse(tokens)
     if condition is None:
         raise RuntimeError("Expected condition in if expression")
-
-    # Parse consequent (true branch)
     consequent = parse(tokens)
     if consequent is None:
         raise RuntimeError("Expected consequent in if expression")
-
-    # Parse alternative (false branch)
     alternative = parse(tokens)
     if alternative is None:
         raise RuntimeError("Expected alternative in if expression")
-
-    # Ensure the if expression is closed with a right parenthesis
     if not tokens or not isinstance(peek(tokens), TokenRParen):
         raise RuntimeError("Expected ')' to close if expression")
     tokens.popleft()
@@ -282,16 +257,20 @@ def base_environment() -> Frame:
     return environment
 
 def evaluate_expression(expression: Expression, environment: Optional[Frame] = None) -> Value:
-    if isinstance(expression, Boolean):
-        return bool(expression.value)
-    elif isinstance(expression, Integer):
+    if isinstance(expression, Integer):
         return int(expression.value)
-    elif isinstance(expression, Identifier):
+    elif isinstance(expression, Symbol):
+        if expression.value == Keyword.TRUE.value:
+            return True
+        elif expression.value == Keyword.FALSE.value:
+            return False
+        elif expression.value == Keyword.NONE.value:
+            return None
         if environment is None:
-            raise RuntimeError(f"Undefined identifier: {expression.name}")
-        value = environment.get(expression.name)
+            raise RuntimeError(f"Undefined identifier: {expression.value}")
+        value = environment.get(expression.value)
         if value is None:
-            raise RuntimeError(f"Undefined identifier: {expression.name}")
+            raise RuntimeError(f"Undefined identifier: {expression.value}")
         return value
     elif isinstance(expression, Closure):
         return Closure(parameters=expression.parameters, body=expression.body, environment=environment)
@@ -309,15 +288,15 @@ def evaluate_expression(expression: Expression, environment: Optional[Frame] = N
 
 def evaluate_invocation(expression: Invocation, environment: Frame) -> Value:
     operator = evaluate_expression(expression.operator, environment)
-    if isinstance(operator, BuiltIn):
+    if isinstance(operator, Callable):
         arguments = [evaluate_expression(arg, environment) for arg in expression.arguments]
-        return operator.function(*arguments)
+        return operator(*arguments)
     elif isinstance(operator, Closure):
         child_environment = Frame(parent=operator.environment)
         if len(operator.parameters) != len(expression.arguments):
             raise RuntimeError("Argument count mismatch")
         for param, arg in zip(operator.parameters, expression.arguments):
-            child_environment.set(param.name, evaluate_expression(arg, environment))
+            child_environment.set(param, evaluate_expression(arg, environment))
         return evaluate_expression(operator.body, child_environment)
     else:
         raise RuntimeError("Attempting to call a non-lambda expression")
