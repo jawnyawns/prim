@@ -1,10 +1,9 @@
 from prim import (
     base_environment,
-    Boolean,
     Closure,
     evaluate_expression,
     evaluate,
-    Identifier,
+    Symbol,
     If,
     Integer,
     Invocation,
@@ -39,12 +38,12 @@ class TestTokenize(TestCase):
     def test_integer(self):
         self.assertEqual(tokenize("123"), deque([TokenInteger(123)]))
     
+    def test_negative_integer(self):
+        self.assertEqual(tokenize("-123"), deque([TokenInteger(-123)]))
+
     def test_invalid_integer(self):
         with self.assertRaises(RuntimeError):
             tokenize("1-2")
-    
-    def test_negative_integer(self):
-        self.assertEqual(tokenize("-123"), deque([TokenInteger(-123)]))
 
     def test_parentheses(self):
         self.assertEqual(
@@ -55,7 +54,7 @@ class TestTokenize(TestCase):
             ])
         )
 
-    def test_let(self):
+    def test_combination(self):
         self.assertEqual(
             tokenize("(lt x 5)"),
             deque([
@@ -70,14 +69,13 @@ class TestTokenize(TestCase):
 class TestParse(TestCase):
     def test_empty(self):
         self.assertEqual(parse(deque()), None)
-
-    def test_boolean(self):
-        self.assertEqual(parse(deque([TokenSymbol("true")])), Boolean(True))
-        self.assertEqual(parse(deque([TokenSymbol("false")])), Boolean(False))
     
     def test_integer(self):
         self.assertEqual(parse(deque([TokenInteger(123)])), Integer(123))
     
+    def test_symbol(self):
+        self.assertEqual(parse(deque([TokenSymbol("abc")])), Symbol("abc"))
+
     def test_closure(self):
         self.assertEqual(
             parse(
@@ -91,7 +89,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None)
+            Closure(parameters=['x'], body=Symbol('x'), environment=None)
         )
     
     def test_invocation(self):
@@ -110,7 +108,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None), arguments=[Integer(1)])
+            Invocation(operator=Closure(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
         )
     
     def test_builtins(self):
@@ -124,7 +122,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Identifier('add'), arguments=[Integer(1), Integer(2)])
+            Invocation(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
         )
     
     def test_boolean_expressions(self):
@@ -138,7 +136,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Identifier('eq'), arguments=[Integer(1), Integer(1)])
+            Invocation(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
         )
     
     def test_if(self):
@@ -146,13 +144,17 @@ class TestParse(TestCase):
             parse(
                 tokenize("(if (lt 1 2) 1 2)")
             ),
-            If(condition=Invocation(operator=Identifier(name='lt'), arguments=[Integer(value=1), Integer(value=2)]), consequent=Integer(value=1), alternative=Integer(value=2))
+            If(
+                condition=Invocation(operator=Symbol(value='lt'),
+                arguments=[Integer(value=1), Integer(value=2)]),
+                consequent=Integer(value=1), alternative=Integer(value=2)
+            )
         )
 
 class TestEvaluate(TestCase):
     def test_boolean(self):
-        self.assertEqual(evaluate(Boolean(True)), True)
-        self.assertEqual(evaluate(Boolean(False)), False)
+        self.assertEqual(evaluate(Symbol("true")), True)
+        self.assertEqual(evaluate(Symbol("false")), False)
     
     def test_integer(self):
         self.assertEqual(evaluate(Integer(123)), 123)
@@ -161,16 +163,16 @@ class TestEvaluate(TestCase):
         environment = base_environment()
         self.assertEqual(
             evaluate_expression(
-                Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None),
+                Closure(parameters=['x'], body=Symbol('x'), environment=None),
                 environment
             ),
-            Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=environment)
+            Closure(parameters=['x'], body=Symbol('x'), environment=environment)
         )
     
     def test_invocation(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Closure(parameters=[Identifier('x')], body=Identifier('x'), environment=None), arguments=[Integer(1)])
+                Invocation(operator=Closure(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
             ),
             1
         )
@@ -178,7 +180,7 @@ class TestEvaluate(TestCase):
     def test_builtins(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Identifier('add'), arguments=[Integer(1), Integer(2)])
+                Invocation(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
             ),
             3
         )
@@ -186,7 +188,7 @@ class TestEvaluate(TestCase):
     def test_boolean_expressions(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Identifier('eq'), arguments=[Integer(1), Integer(1)])
+                Invocation(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
             ),
             True
         )
