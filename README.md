@@ -1,43 +1,25 @@
 # Prim
 
-Let's make a language!
+Prim is a programming language I am building. It is experimental, expect instability and breaking changes!
+
+*For more details, see the [working doc](https://docs.google.com/document/d/1iJsffAytYFPaUuvtak5jFNhN2Ew4YV_O9aWLTrtU4vw/edit?usp=sharing).*
 
 ## Usage
 
-```
-python3 prim.py examples/lambda_builtins.prim
-```
+Requires **Python 3.12** or higher.
 
-## Test
+Example usage:
 
 ```
-python3 -m unittest discover -s test -p "test_*.py"
+python3 prim.py examples/factorial.prim
 ```
 
-## Features
+## Testing
 
-- Booleans
-- Numbers
-- Lexically scoped closure-supporting lambda functions (and yes, functions should be values)
-- Basic math
-- Boolean expressions (e.g. equals, less than, etc)
+```
+python3 -m unittest discover -s test
+```
 
-## TODO
+## Copyright
 
-- Refactor parser to create Pair(Pair(Pair(...))) data structure since syntax of Prim is so uniform?
-- Pairs (try implementing direclty in Prim via lambdas)
-- Lists (try implementing direclty in Prim via lambdas)
-- Variable binding and recall via let expressions only (which are implemented via lambdas, no define!)
-- Dynamic type checking and corresponding runtime errors
-- Core library implemented exclusively in Prim (e.g. if/else, and/or, not, let)
-- NO exceptions. Only return types.
-
-## Things to try out in the future
-
-- Lazy-eval by default
-- Support a built-in dict data structure
-- Optional parenths: indentation means "within parenth" and new line means "new item within parenth"
-
-## License
-
-© John Chin-Jew
+© John Chin-Jew. All rights reserved.

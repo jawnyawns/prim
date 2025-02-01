@@ -56,9 +56,7 @@ class TokenSymbol(Token):
     - The name of a built-in operator
     - The textual representation of a literal
     - A reserved keyword
-
-    Merging all these into a single token is useful. It simplifies lexing and parsing,
-    and, avoids threading overly verbose data structures throughout our implementation.
+    Merging all these into a single token simplifies lexing and parsing.
     """
     value: str
 
