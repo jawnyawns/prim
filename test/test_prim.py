@@ -68,7 +68,8 @@ class TestTokenize(TestCase):
 
 class TestParse(TestCase):
     def test_empty(self):
-        self.assertEqual(parse(deque()), None)
+        with self.assertRaises(RuntimeError):
+            parse(deque([]))
     
     def test_integer(self):
         self.assertEqual(parse(deque([TokenInteger(123)])), Integer(123))

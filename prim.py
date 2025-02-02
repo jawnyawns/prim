@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import (
     Callable,
+    Deque,
     Optional,
     TypeVar,
     Union,
@@ -45,11 +46,15 @@ class TokenRParen(Token):
     pass
 
 @dataclass
-class TokenInteger(Token):
+class TokenNonParen(Token):
+    pass
+
+@dataclass
+class TokenInteger(TokenNonParen):
     value: int
 
 @dataclass
-class TokenSymbol(Token):
+class TokenSymbol(TokenNonParen):
     """
     A symbol is a sequence of characters that can represent many things:
     - The name of an identifier
@@ -169,78 +174,79 @@ class If(Expression):
     consequent: Expression
     alternative: Expression
 
-def parse(tokens: deque[Token]) -> Optional[Expression]:
+TokenNode = Union[TokenNonParen, Deque["TokenNode"]]
+
+def parse(tokens: deque[Token]) -> Expression:
+    token_node = parse_parenths(tokens)
+    return parse_expression(token_node)
+
+def parse_parenths(tokens: deque[Token]) -> TokenNode:
     if not tokens:
-        return None
+        raise RuntimeError("Unexpected end of tokens (when parsing parentheses)")
     token = tokens.popleft()
-    if isinstance(token, TokenSymbol):
-        return Symbol(token.value)
-    elif isinstance(token, TokenInteger):
-        return Integer(value=int(token.value))
+    if isinstance(token, (TokenInteger, TokenSymbol)):
+        return token
     elif isinstance(token, TokenLParen):
-        operator = peek(tokens)
-        if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
-            return parse_closure(tokens)
-        elif operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.IF.value:
-            return parse_if(tokens)
-        else:
-            return parse_invocation(tokens)
+        group = deque()
+        while tokens:
+            next_token = peek(tokens)
+            if isinstance(next_token, TokenRParen):
+                tokens.popleft()
+                return group
+            group.append(parse_parenths(tokens))
+        raise RuntimeError("Unexpected end of tokens")
     else:
-        logging.error("Cannot parse non-symbol token")
-        return None
+        raise RuntimeError(f"Unexpected token (when parsing parentheses): {token}")
 
-def parse_closure(tokens: deque[Token]):
-    if not tokens:
-        raise RuntimeError("Unexpected end of tokens after '('")
-    lambda_token = tokens.popleft()
-    if not isinstance(lambda_token, TokenSymbol) or lambda_token.value != Keyword.LAMBDA.value:
-        raise RuntimeError(f"Expected 'lambda', got {lambda_token.value}")
-    if not tokens or not isinstance(peek(tokens), TokenLParen):
-        raise RuntimeError("Expected '(' to start parameter list")
-    parameters = []
-    tokens.popleft()
-    while tokens and isinstance(peek(tokens), TokenSymbol):
-        parameters.append(tokens.popleft().value)
-    if not tokens or not isinstance(peek(tokens), TokenRParen):
-        raise RuntimeError("Expected ')' to end parameter list")
-    tokens.popleft()
-    body = parse(tokens)
-    if not tokens or not isinstance(peek(tokens), TokenRParen):
-        raise RuntimeError("Expected ')' to close lambda expression")
-    tokens.popleft()
+def parse_expression(t: TokenNode) -> Expression:
+    if isinstance(t, TokenInteger):
+        return Integer(value=int(t.value))
+    elif isinstance(t, TokenSymbol):
+        return Symbol(t.value)
+    elif isinstance(t, deque):
+        operator = peek(t)
+        if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
+            return parse_closure(t)
+        elif operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.IF.value:
+            return parse_if(t)
+        else:
+            return parse_invocation(t)
+    else:
+        raise RuntimeError(f"Unexpected token (when parsing expression): {t}")
 
-    return Closure(parameters=parameters, body=body, environment=None)
+def parse_closure(ts: deque[TokenNode]) -> Closure:
+    if len(ts) != 3:
+        raise RuntimeError("Malformed lambda expression")
+    ts.popleft() # consume 'lambda'
+    return Closure(
+        parameters=list(map(parse_closure_parameter, ts.popleft())),
+        body=parse_expression(ts.popleft()),
+        environment=None
+    )
 
-def parse_if(tokens: deque[Token]) -> If:
-    if not tokens:
-        raise RuntimeError("Unexpected end of tokens after '('")
-    if_token = tokens.popleft()
-    if not isinstance(if_token, TokenSymbol) or if_token.value != Keyword.IF.value:
-        raise RuntimeError(f"Expected 'if', got {if_token.value}")
-    condition = parse(tokens)
-    if condition is None:
-        raise RuntimeError("Expected condition in if expression")
-    consequent = parse(tokens)
-    if consequent is None:
-        raise RuntimeError("Expected consequent in if expression")
-    alternative = parse(tokens)
-    if alternative is None:
-        raise RuntimeError("Expected alternative in if expression")
-    if not tokens or not isinstance(peek(tokens), TokenRParen):
-        raise RuntimeError("Expected ')' to close if expression")
-    tokens.popleft()
+def parse_closure_parameter(t: TokenNode) -> str:
+    if isinstance(t, TokenSymbol):
+        return t.value
+    else:
+        raise RuntimeError(f"Unexpected token in parameter list: {t}")
 
-    return If(condition=condition, consequent=consequent, alternative=alternative)
+def parse_if(ts: deque[TokenNode]) -> If:
+    if len(ts) != 4:
+        raise RuntimeError("Malformed if expression")
+    ts.popleft() # consume 'if'
+    return If(
+        condition=parse_expression(ts.popleft()), 
+        consequent=parse_expression(ts.popleft()), 
+        alternative=parse_expression(ts.popleft())
+    )
 
-def parse_invocation(tokens: deque[Token]) -> Expression:
-    callable_expr = parse(tokens)
-    arguments = []
-    while tokens and not isinstance(peek(tokens), TokenRParen):
-        arguments.append(parse(tokens))
-    if not tokens or not isinstance(peek(tokens), TokenRParen):
-        raise RuntimeError("Expected ')' to close invocation")
-    tokens.popleft()
-    return Invocation(operator=callable_expr, arguments=arguments)
+def parse_invocation(ts: deque[TokenNode]) -> Invocation:
+    if len(ts) == 0:
+        raise RuntimeError("Malformed call expression")
+    return Invocation(
+        operator=parse_expression(ts.popleft()),
+        arguments=list(map(parse_expression, ts))
+    )
 
 ### EVALUATE ###
 
@@ -312,8 +318,9 @@ def main():
             source_code = source_file.read()
             tokens = tokenize(source_code)
             logging.debug(f"Tokenize result: {tokens}")
-            expression = parse(tokens)
-            logging.debug(f"Parse result: {expression}")
+            if tokens:
+                expression = parse(tokens)
+                logging.debug(f"Parse result: {expression}")
             if expression:
                 value = evaluate(expression)
                 logging.debug(f"Evaluation result: {value}")
