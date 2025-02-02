@@ -158,13 +158,13 @@ class Symbol(Expression):
     value: str
 
 @dataclass
-class Closure(Expression):
+class Lambda(Expression):
     parameters: list[str]
     body: Expression
     environment: Frame
 
 @dataclass
-class Invocation(Expression):
+class Call(Expression):
     operator: Expression
     arguments: list[Expression]
 
@@ -206,7 +206,7 @@ def parse_expression(t: TokenNode) -> Expression:
     elif isinstance(t, deque):
         operator = peek(t)
         if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
-            return parse_closure(t)
+            return parse_lambda(t)
         elif operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.IF.value:
             return parse_if(t)
         else:
@@ -214,11 +214,11 @@ def parse_expression(t: TokenNode) -> Expression:
     else:
         raise RuntimeError(f"Unexpected token (when parsing expression): {t}")
 
-def parse_closure(ts: deque[TokenNode]) -> Closure:
+def parse_lambda(ts: deque[TokenNode]) -> Lambda:
     if len(ts) != 3:
         raise RuntimeError("Malformed lambda expression")
     ts.popleft() # consume 'lambda'
-    return Closure(
+    return Lambda(
         parameters=list(map(parse_closure_parameter, ts.popleft())),
         body=parse_expression(ts.popleft()),
         environment=None
@@ -240,10 +240,10 @@ def parse_if(ts: deque[TokenNode]) -> If:
         alternative=parse_expression(ts.popleft())
     )
 
-def parse_invocation(ts: deque[TokenNode]) -> Invocation:
+def parse_invocation(ts: deque[TokenNode]) -> Call:
     if len(ts) == 0:
         raise RuntimeError("Malformed call expression")
-    return Invocation(
+    return Call(
         operator=parse_expression(ts.popleft()),
         arguments=list(map(parse_expression, ts))
     )
@@ -276,26 +276,26 @@ def evaluate_expression(expression: Expression, environment: Optional[Frame] = N
         if value is None:
             raise RuntimeError(f"Undefined identifier: {expression.value}")
         return value
-    elif isinstance(expression, Closure):
-        return Closure(parameters=expression.parameters, body=expression.body, environment=environment)
+    elif isinstance(expression, Lambda):
+        return Lambda(parameters=expression.parameters, body=expression.body, environment=environment)
     elif isinstance(expression, If):
         condition = evaluate_expression(expression.condition, environment)
         if condition:
             return evaluate_expression(expression.consequent, environment)
         else:
             return evaluate_expression(expression.alternative, environment)
-    elif isinstance(expression, Invocation):
+    elif isinstance(expression, Call):
         return evaluate_invocation(expression, environment)
     else:
         logging.error("Cannot evaluate that expression quite yet")
         return None
 
-def evaluate_invocation(expression: Invocation, environment: Frame) -> Value:
+def evaluate_invocation(expression: Call, environment: Frame) -> Value:
     operator = evaluate_expression(expression.operator, environment)
     if isinstance(operator, Callable):
         arguments = [evaluate_expression(arg, environment) for arg in expression.arguments]
         return operator(*arguments)
-    elif isinstance(operator, Closure):
+    elif isinstance(operator, Lambda):
         child_environment = Frame(parent=operator.environment)
         if len(operator.parameters) != len(expression.arguments):
             raise RuntimeError("Argument count mismatch")

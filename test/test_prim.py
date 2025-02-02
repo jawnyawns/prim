@@ -1,12 +1,12 @@
 from prim import (
     base_environment,
-    Closure,
+    Lambda,
     evaluate_expression,
     evaluate,
     Symbol,
     If,
     Integer,
-    Invocation,
+    Call,
     parse,
     TokenInteger,
     tokenize,
@@ -77,7 +77,7 @@ class TestParse(TestCase):
     def test_symbol(self):
         self.assertEqual(parse(deque([TokenSymbol("abc")])), Symbol("abc"))
 
-    def test_closure(self):
+    def test_lambda(self):
         self.assertEqual(
             parse(
                 deque([
@@ -90,10 +90,10 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Closure(parameters=['x'], body=Symbol('x'), environment=None)
+            Lambda(parameters=['x'], body=Symbol('x'), environment=None)
         )
     
-    def test_invocation(self):
+    def test_call(self):
         self.assertEqual(
             parse(
                 deque([
@@ -109,7 +109,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Closure(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
+            Call(operator=Lambda(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
         )
     
     def test_builtins(self):
@@ -123,7 +123,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
+            Call(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
         )
     
     def test_boolean_expressions(self):
@@ -137,7 +137,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ])
             ),
-            Invocation(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
+            Call(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
         )
     
     def test_if(self):
@@ -146,7 +146,7 @@ class TestParse(TestCase):
                 tokenize("(if (lt 1 2) 1 2)")
             ),
             If(
-                condition=Invocation(operator=Symbol(value='lt'),
+                condition=Call(operator=Symbol(value='lt'),
                 arguments=[Integer(value=1), Integer(value=2)]),
                 consequent=Integer(value=1), alternative=Integer(value=2)
             )
@@ -160,20 +160,20 @@ class TestEvaluate(TestCase):
     def test_integer(self):
         self.assertEqual(evaluate(Integer(123)), 123)
     
-    def test_closure(self):
+    def test_lambda(self):
         environment = base_environment()
         self.assertEqual(
             evaluate_expression(
-                Closure(parameters=['x'], body=Symbol('x'), environment=None),
+                Lambda(parameters=['x'], body=Symbol('x'), environment=None),
                 environment
             ),
-            Closure(parameters=['x'], body=Symbol('x'), environment=environment)
+            Lambda(parameters=['x'], body=Symbol('x'), environment=environment)
         )
     
-    def test_invocation(self):
+    def test_call(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Closure(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
+                Call(operator=Lambda(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
             ),
             1
         )
@@ -181,7 +181,7 @@ class TestEvaluate(TestCase):
     def test_builtins(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
+                Call(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
             ),
             3
         )
@@ -189,7 +189,7 @@ class TestEvaluate(TestCase):
     def test_boolean_expressions(self):
         self.assertEqual(
             evaluate(
-                Invocation(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
+                Call(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
             ),
             True
         )
