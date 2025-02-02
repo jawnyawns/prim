@@ -1,1 +1,6 @@
-(lambda (x) x)
+(
+  (lambda (x)
+    (add (mul (sub x 1) 2) 3)
+  )
+  10
+)

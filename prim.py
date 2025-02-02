@@ -128,6 +128,8 @@ BUILTINS = {
     "gt": lambda a, b: a > b,
     "leq": lambda a, b: a <= b,
     "geq": lambda a, b: a >= b,
+    "pair": lambda a, b: (a, b),
+    "list": lambda *args: list(args),
 }
 
 class Frame:
