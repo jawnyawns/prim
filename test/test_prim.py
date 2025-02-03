@@ -89,7 +89,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ]
             ),
-            Lambda(parameters=['x'], body=Symbol('x'))
+            Lambda(params=['x'], body=Symbol('x'))
         )
     
     def test_call(self):
@@ -108,7 +108,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ]
             ),
-            Call(operator=Lambda(parameters=['x'], body=Symbol('x')), arguments=[Integer(1)])
+            Call(operator=Lambda(params=['x'], body=Symbol('x')), args=[Integer(1)])
         )
     
     def test_builtins(self):
@@ -122,7 +122,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ]
             ),
-            Call(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
+            Call(operator=Symbol('add'), args=[Integer(1), Integer(2)])
         )
     
     def test_boolean_expr(self):
@@ -136,7 +136,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ]
             ),
-            Call(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
+            Call(operator=Symbol('eq'), args=[Integer(1), Integer(1)])
         )
     
     def test_if(self):
@@ -146,7 +146,7 @@ class TestParse(TestCase):
             ),
             If(
                 condition=Call(operator=Symbol(value='lt'),
-                arguments=[Integer(value=1), Integer(value=2)]),
+                args=[Integer(value=1), Integer(value=2)]),
                 consequent=Integer(value=1), alternative=Integer(value=2)
             )
         )
@@ -162,17 +162,17 @@ class TestEval(TestCase):
     def test_lambda(self):
         self.assertEqual(
             eval(
-                Lambda(parameters=['x'], body=Symbol('x')),
+                Lambda(params=['x'], body=Symbol('x')),
             ),
-            Closure(parameters=['x'], body=Symbol('x'), env=base_env())
+            Closure(params=['x'], body=Symbol('x'), env=base_env())
         )
     
     def test_call(self):
         self.assertEqual(
             eval(
                 Call(
-                    operator=Lambda(parameters=['x'], body=Symbol('x')),
-                    arguments=[Integer(1)]
+                    operator=Lambda(params=['x'], body=Symbol('x')),
+                    args=[Integer(1)]
                 )
             ),
             1
@@ -181,7 +181,7 @@ class TestEval(TestCase):
     def test_builtins(self):
         self.assertEqual(
             eval(
-                Call(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
+                Call(operator=Symbol('add'), args=[Integer(1), Integer(2)])
             ),
             3
         )
@@ -189,7 +189,7 @@ class TestEval(TestCase):
     def test_boolean_expr(self):
         self.assertEqual(
             eval(
-                Call(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
+                Call(operator=Symbol('eq'), args=[Integer(1), Integer(1)])
             ),
             True
         )

@@ -117,13 +117,13 @@ class Symbol(Expr):
 
 @dataclass(frozen=True)
 class Lambda(Expr):
-    parameters: list[str]
+    params: list[str]
     body: Expr
 
 @dataclass(frozen=True)
 class Call(Expr):
     operator: Expr
-    arguments: list[Expr]
+    args: list[Expr]
 
 @dataclass(frozen=True)
 class If(Expr):
@@ -179,15 +179,15 @@ def parse_expr(t: TokenNode) -> tuple[Expr, TokenNode]:
 def parse_lambda(t: TokenNode) -> tuple[Lambda, TokenNode]:
     if not isinstance(t, list) or len(t) != 3:
         raise RuntimeError("Malformed lambda expression")
-    _, parameters, body, *rest = t
-    if not isinstance(parameters, list):
+    _, params, body, *rest = t
+    if not isinstance(params, list):
         raise RuntimeError("Malformed lambda expression parameters")
     return Lambda(
-        parameters=list(map(parse_closure_parameter, parameters)),
+        params=list(map(parse_closure_param, params)),
         body=parse_expr(body)[0],
     ), rest
 
-def parse_closure_parameter(t: TokenNode) -> str:
+def parse_closure_param(t: TokenNode) -> str:
     if isinstance(t, TokenSymbol):
         return t.value
     else:
@@ -209,14 +209,14 @@ def parse_call(t: TokenNode) -> tuple[Call, TokenNode]:
     operator, *rest = t
     return Call(
         operator=parse_expr(operator)[0],
-        arguments=list(map(lambda t: parse_expr(t)[0], rest))
+        args=list(map(lambda t: parse_expr(t)[0], rest))
     ), rest
 
 ### EVAL ###
 
 @dataclass(frozen=True)
 class Closure:
-    parameters: list[str]
+    params: list[str]
     body: Expr
     env: "Frame"
 
@@ -287,7 +287,7 @@ def eval_expr(expr: Expr, env: Frame) -> Value:
             raise RuntimeError(f"Undefined identifier: {expr.value}")
         return value
     elif isinstance(expr, Lambda):
-        return Closure(parameters=expr.parameters, body=expr.body, env=env)
+        return Closure(params=expr.params, body=expr.body, env=env)
     elif isinstance(expr, If):
         condition = eval_expr(expr.condition, env)
         if condition:
@@ -301,26 +301,26 @@ def eval_expr(expr: Expr, env: Frame) -> Value:
 
 def eval_call(expr: Call, env: Frame) -> Value:
     operator = eval_expr(expr.operator, env)
-    arguments = [eval_expr(arg, env) for arg in expr.arguments]
+    args = [eval_expr(arg, env) for arg in expr.args]
     if isinstance(operator, Builtin):
         if isinstance(operator, (BuiltinBinaryMath, BuiltinBinaryPredicate)):
-            if len(arguments) != 2:
+            if len(args) != 2:
                 raise RuntimeError("Expected 2 arguments")
-            a, b = arguments
+            a, b = args
             if not isinstance(a, int) or not isinstance(b, int):
                 raise RuntimeError("Expected 2 integer arguments")
             return operator.fn(a, b)
         elif isinstance(operator, BuiltinPair):
-            if len(arguments) != 2:
+            if len(args) != 2:
                 raise RuntimeError("Expected 2 arguments")
-            a, b = arguments
+            a, b = args
             return operator.fn(a, b)
         raise RuntimeError("Unsupported operator")
     elif isinstance(operator, Closure):
-        if len(operator.parameters) != len(expr.arguments):
+        if len(operator.params) != len(expr.args):
             raise RuntimeError("Argument count mismatch")
         bindings = MappingProxyType({
-            param: arg for param, arg in zip(operator.parameters, arguments)
+            param: arg for param, arg in zip(operator.params, args)
         })
         child_env = Frame(
             bindings=bindings,
