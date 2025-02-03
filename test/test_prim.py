@@ -1,8 +1,8 @@
 from prim import (
-    base_environment,
+    base_env,
     Call,
     Closure,
-    evaluate,
+    eval,
     If,
     Integer,
     Lambda,
@@ -125,7 +125,7 @@ class TestParse(TestCase):
             Call(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
         )
     
-    def test_boolean_expressions(self):
+    def test_boolean_expr(self):
         self.assertEqual(
             parse(
                 [
@@ -151,25 +151,25 @@ class TestParse(TestCase):
             )
         )
 
-class TestEvaluate(TestCase):
+class TestEval(TestCase):
     def test_boolean(self):
-        self.assertEqual(evaluate(Symbol("true")), True)
-        self.assertEqual(evaluate(Symbol("false")), False)
+        self.assertEqual(eval(Symbol("true")), True)
+        self.assertEqual(eval(Symbol("false")), False)
     
     def test_integer(self):
-        self.assertEqual(evaluate(Integer(123)), 123)
+        self.assertEqual(eval(Integer(123)), 123)
     
     def test_lambda(self):
         self.assertEqual(
-            evaluate(
+            eval(
                 Lambda(parameters=['x'], body=Symbol('x')),
             ),
-            Closure(parameters=['x'], body=Symbol('x'), environment=base_environment())
+            Closure(parameters=['x'], body=Symbol('x'), env=base_env())
         )
     
     def test_call(self):
         self.assertEqual(
-            evaluate(
+            eval(
                 Call(
                     operator=Lambda(parameters=['x'], body=Symbol('x')),
                     arguments=[Integer(1)]
@@ -180,15 +180,15 @@ class TestEvaluate(TestCase):
     
     def test_builtins(self):
         self.assertEqual(
-            evaluate(
+            eval(
                 Call(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
             ),
             3
         )
     
-    def test_boolean_expressions(self):
+    def test_boolean_expr(self):
         self.assertEqual(
-            evaluate(
+            eval(
                 Call(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
             ),
             True
@@ -196,7 +196,7 @@ class TestEvaluate(TestCase):
     
     def test_if(self):
         self.assertEqual(
-            evaluate(
+            eval(
                 parse(
                     tokenize("(if (lt 1 2) 1 2)")
                 )

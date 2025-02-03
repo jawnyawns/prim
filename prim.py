@@ -105,39 +105,39 @@ class Keyword(Enum):
     LAMBDA = "lambda"
     IF = "if"
 
-class Expression:
+class Expr:
     pass
 
 @dataclass(frozen=True)
-class Integer(Expression):
+class Integer(Expr):
     value: int
 
 @dataclass(frozen=True)
-class Symbol(Expression):
+class Symbol(Expr):
     value: str
 
 @dataclass(frozen=True)
-class Lambda(Expression):
+class Lambda(Expr):
     parameters: list[str]
-    body: Expression
+    body: Expr
 
 @dataclass(frozen=True)
-class Call(Expression):
-    operator: Expression
-    arguments: list[Expression]
+class Call(Expr):
+    operator: Expr
+    arguments: list[Expr]
 
 @dataclass(frozen=True)
-class If(Expression):
-    condition: Expression
-    consequent: Expression
-    alternative: Expression
+class If(Expr):
+    condition: Expr
+    consequent: Expr
+    alternative: Expr
 
 TokenNode = Union[TokenNonParen, list["TokenNode"]]
 
-def parse(tokens: list[Token]) -> Expression:
+def parse(tokens: list[Token]) -> Expr:
     token_node, _ = parse_parens(tokens)
-    expression, _ = parse_expression(token_node)
-    return expression
+    expr, _ = parse_expr(token_node)
+    return expr
 
 def parse_parens(tokens: list[Token]) -> tuple[TokenNode, list[Token]]:
     if not tokens:
@@ -159,7 +159,7 @@ def parse_parens_group(remaining: list[Token], group: TokenNode) -> tuple[TokenN
     token_node, new_remaining = parse_parens(remaining)
     return parse_parens_group(new_remaining, group + [token_node])
 
-def parse_expression(t: TokenNode) -> tuple[Expression, TokenNode]:
+def parse_expr(t: TokenNode) -> tuple[Expr, TokenNode]:
     if isinstance(t, TokenInteger):
         return Integer(value=int(t.value)), []
     elif isinstance(t, TokenSymbol):
@@ -181,7 +181,7 @@ def parse_lambda(t: TokenNode) -> tuple[Lambda, TokenNode]:
     _, parameters, body, *rest = t
     return Lambda(
         parameters=list(map(parse_closure_parameter, parameters)),
-        body=parse_expression(body)[0],
+        body=parse_expr(body)[0],
     ), rest
 
 def parse_closure_parameter(t: TokenNode) -> str:
@@ -195,9 +195,9 @@ def parse_if(t: TokenNode) -> tuple[If, TokenNode]:
         raise RuntimeError("Malformed if expression")
     _, condition, consequent, alternative, *rest = t
     return If(
-        condition=parse_expression(condition)[0], 
-        consequent=parse_expression(consequent)[0], 
-        alternative=parse_expression(alternative)[0]
+        condition=parse_expr(condition)[0], 
+        consequent=parse_expr(consequent)[0], 
+        alternative=parse_expr(alternative)[0]
     ), rest
 
 def parse_call(t: TokenNode) -> tuple[Call, TokenNode]:
@@ -205,19 +205,19 @@ def parse_call(t: TokenNode) -> tuple[Call, TokenNode]:
         raise RuntimeError("Malformed call expression")
     operator, *rest = t
     return Call(
-        operator=parse_expression(operator)[0],
-        arguments=list(map(lambda t: parse_expression(t)[0], rest))
+        operator=parse_expr(operator)[0],
+        arguments=list(map(lambda t: parse_expr(t)[0], rest))
     ), rest
 
-### EVALUATE ###
+### EVAL ###
 
 Value = Union[int, bool, Callable, "Closure", None]
 
 @dataclass(frozen=True)
 class Closure:
     parameters: list[str]
-    body: Expression
-    environment: "Frame"
+    body: Expr
+    env: "Frame"
 
 @dataclass(frozen=True)
 class Frame:
@@ -245,58 +245,58 @@ BUILTINS: Mapping[str, Callable] = MappingProxyType({
     "pair": lambda a, b: (a, b),
 })
 
-def evaluate(expression: Expression) -> Value:
-    environment = base_environment()
-    return evaluate_expression(expression, environment)
+def eval(expr: Expr) -> Value:
+    env = base_env()
+    return eval_expr(expr, env)
 
-def base_environment() -> Frame:
+def base_env() -> Frame:
     return Frame(bindings=BUILTINS, parent=None)
 
-def evaluate_expression(expression: Expression, environment: Optional[Frame] = None) -> Value:
-    if isinstance(expression, Integer):
-        return int(expression.value)
-    elif isinstance(expression, Symbol):
-        if expression.value == Keyword.TRUE.value:
+def eval_expr(expr: Expr, env: Optional[Frame] = None) -> Value:
+    if isinstance(expr, Integer):
+        return int(expr.value)
+    elif isinstance(expr, Symbol):
+        if expr.value == Keyword.TRUE.value:
             return True
-        elif expression.value == Keyword.FALSE.value:
+        elif expr.value == Keyword.FALSE.value:
             return False
-        elif expression.value == Keyword.NONE.value:
+        elif expr.value == Keyword.NONE.value:
             return None
-        if environment is None:
-            raise RuntimeError(f"Undefined identifier: {expression.value}")
-        value = environment.get(expression.value)
+        if env is None:
+            raise RuntimeError(f"Undefined identifier: {expr.value}")
+        value = env.get(expr.value)
         if value is None:
-            raise RuntimeError(f"Undefined identifier: {expression.value}")
+            raise RuntimeError(f"Undefined identifier: {expr.value}")
         return value
-    elif isinstance(expression, Lambda):
-        return Closure(parameters=expression.parameters, body=expression.body, environment=environment)
-    elif isinstance(expression, If):
-        condition = evaluate_expression(expression.condition, environment)
+    elif isinstance(expr, Lambda):
+        return Closure(parameters=expr.parameters, body=expr.body, env=env)
+    elif isinstance(expr, If):
+        condition = eval_expr(expr.condition, env)
         if condition:
-            return evaluate_expression(expression.consequent, environment)
+            return eval_expr(expr.consequent, env)
         else:
-            return evaluate_expression(expression.alternative, environment)
-    elif isinstance(expression, Call):
-        return evaluate_call(expression, environment)
+            return eval_expr(expr.alternative, env)
+    elif isinstance(expr, Call):
+        return eval_call(expr, env)
     else:
-        raise RuntimeError(f"Unsupported expression: {expression}")
+        raise RuntimeError(f"Unsupported expression: {expr}")
 
-def evaluate_call(expression: Call, environment: Frame) -> Value:
-    operator = evaluate_expression(expression.operator, environment)
+def eval_call(expr: Call, env: Frame) -> Value:
+    operator = eval_expr(expr.operator, env)
     if isinstance(operator, Callable):
-        arguments = [evaluate_expression(arg, environment) for arg in expression.arguments]
+        arguments = [eval_expr(arg, env) for arg in expr.arguments]
         return operator(*arguments)
     elif isinstance(operator, Closure):
-        if len(operator.parameters) != len(expression.arguments):
+        if len(operator.parameters) != len(expr.arguments):
             raise RuntimeError("Argument count mismatch")
         bindings = MappingProxyType({
-            param: evaluate_expression(arg, environment) for param, arg in zip(operator.parameters, expression.arguments)
+            param: eval_expr(arg, env) for param, arg in zip(operator.parameters, expr.arguments)
         })
-        child_environment = Frame(
+        child_env = Frame(
             bindings=bindings,
-            parent=operator.environment
+            parent=operator.env
         )
-        return evaluate_expression(operator.body, child_environment)
+        return eval_expr(operator.body, child_env)
     else:
         raise RuntimeError("Call expression must have a callable operator")
 
@@ -314,10 +314,10 @@ def main():
             tokens = tokenize(source_code)
             logging.debug(f"Tokenize result: {tokens}")
             if tokens:
-                expression = parse(tokens)
-                logging.debug(f"Parse result: {expression}")
-            if expression:
-                value = evaluate(expression)
+                expr = parse(tokens)
+                logging.debug(f"Parse result: {expr}")
+            if expr:
+                value = eval(expr)
                 logging.debug(f"Evaluation result: {value}")
     except FileNotFoundError:
         logging.error(f"File not found: {source_file_path}")
