@@ -14,7 +14,6 @@ from prim import (
     TokenRParen,
     TokenSymbol,
 )
-from collections import deque
 from unittest import (
     main,
     TestCase,
@@ -22,24 +21,24 @@ from unittest import (
 
 class TestTokenize(TestCase):
     def test_empty(self):
-        self.assertEqual(tokenize(""), deque())
+        self.assertEqual(tokenize(""), [])
     
     def test_invalid_character(self):
         with self.assertRaises(RuntimeError):
             tokenize("$")
 
     def test_symbol(self):
-        self.assertEqual(tokenize("abc"), deque([TokenSymbol("abc")]))
+        self.assertEqual(tokenize("abc"), [TokenSymbol("abc")])
     
     def test_invalid_symbol(self):
         with self.assertRaises(RuntimeError):
             tokenize("(a-c)")
 
     def test_integer(self):
-        self.assertEqual(tokenize("123"), deque([TokenInteger(123)]))
+        self.assertEqual(tokenize("123"), [TokenInteger(123)])
     
     def test_negative_integer(self):
-        self.assertEqual(tokenize("-123"), deque([TokenInteger(-123)]))
+        self.assertEqual(tokenize("-123"), [TokenInteger(-123)])
 
     def test_invalid_integer(self):
         with self.assertRaises(RuntimeError):
@@ -48,39 +47,39 @@ class TestTokenize(TestCase):
     def test_parentheses(self):
         self.assertEqual(
             tokenize("()"),
-            deque([
+            [
                 TokenLParen(),
                 TokenRParen(),
-            ])
+            ]
         )
 
     def test_combination(self):
         self.assertEqual(
             tokenize("(lt x 5)"),
-            deque([
+            [
                 TokenLParen(),
                 TokenSymbol("lt"),
                 TokenSymbol("x"),
                 TokenInteger(5),
                 TokenRParen(),
-            ])
+            ]
         )
 
 class TestParse(TestCase):
     def test_empty(self):
         with self.assertRaises(RuntimeError):
-            parse(deque([]))
+            parse([])
     
     def test_integer(self):
-        self.assertEqual(parse(deque([TokenInteger(123)])), Integer(123))
+        self.assertEqual(parse([TokenInteger(123)]), Integer(123))
     
     def test_symbol(self):
-        self.assertEqual(parse(deque([TokenSymbol("abc")])), Symbol("abc"))
+        self.assertEqual(parse([TokenSymbol("abc")]), Symbol("abc"))
 
     def test_lambda(self):
         self.assertEqual(
             parse(
-                deque([
+                [
                     TokenLParen(),
                     TokenSymbol('lambda'),
                     TokenLParen(),
@@ -88,7 +87,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                     TokenSymbol('x'),
                     TokenRParen(),
-                ])
+                ]
             ),
             Lambda(parameters=['x'], body=Symbol('x'), environment=None)
         )
@@ -96,7 +95,7 @@ class TestParse(TestCase):
     def test_call(self):
         self.assertEqual(
             parse(
-                deque([
+                [
                     TokenLParen(),
                     TokenLParen(),
                     TokenSymbol('lambda'),
@@ -107,7 +106,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                     TokenInteger(1),
                     TokenRParen(),
-                ])
+                ]
             ),
             Call(operator=Lambda(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
         )
@@ -115,13 +114,13 @@ class TestParse(TestCase):
     def test_builtins(self):
         self.assertEqual(
             parse(
-                deque([
+                [
                     TokenLParen(),
                     TokenSymbol('add'),
                     TokenInteger(1),
                     TokenInteger(2),
                     TokenRParen(),
-                ])
+                ]
             ),
             Call(operator=Symbol('add'), arguments=[Integer(1), Integer(2)])
         )
@@ -129,13 +128,13 @@ class TestParse(TestCase):
     def test_boolean_expressions(self):
         self.assertEqual(
             parse(
-                deque([
+                [
                     TokenLParen(),
                     TokenSymbol('eq'),
                     TokenInteger(1),
                     TokenInteger(1),
                     TokenRParen(),
-                ])
+                ]
             ),
             Call(operator=Symbol('eq'), arguments=[Integer(1), Integer(1)])
         )

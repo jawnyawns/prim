@@ -2,23 +2,13 @@ import logging
 import string
 import sys
 
-from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 from typing import (
     Callable,
-    Deque,
     Optional,
-    TypeVar,
     Union,
 )
-
-### UTILS ###
-
-T = TypeVar("T")
-
-def peek(l: deque[T]) -> Optional[T]:
-    return l[0] if l else None
 
 ### TOKENIZE ###
 
@@ -61,45 +51,42 @@ class TokenSymbol(TokenNonParen):
     - The name of a built-in operator
     - The textual representation of a literal
     - A reserved keyword
-    Merging all these into a single token simplifies lexing and parsing.
     """
     value: str
 
-def tokenize(source_code: str) -> deque[Token]:
-    tokens = deque()
-    index = 0
-    while index < len(source_code):
-        character = source_code[index]
-        if character in CharSet.SPACE.value:
-            index += 1
-        elif character in CharSet.LPAREN.value:
-            tokens.append(TokenLParen())
-            index += 1
-        elif character in CharSet.RPAREN.value:
-            tokens.append(TokenRParen())
-            index += 1
-        elif character in CharSet.INTEGER_START.value:
-            text, index = consume_until_delimiter(index, source_code, CharSet.INTEGER_END.value)
-            if is_valid_integer(text):
-                tokens.append(TokenInteger(value=int(text)))
-            else:
-                raise RuntimeError(f"Invalid integer '{text}' preceding position {index}")
-        elif character in CharSet.SYMBOL_START.value:
-            text, index = consume_until_delimiter(index, source_code, CharSet.SYMBOL_END.value)
-            if is_valid_symbol(text):
-                tokens.append(TokenSymbol(value=text))
-            else:
-                raise RuntimeError(f"Invalid symbol '{text}' preceding position {index}")
-        else:
-            raise RuntimeError(f"Unexpected character '{character}' at position {index}")
+def tokenize(source_code: str) -> list[Token]:
+    tokens, _ = tokenize_helper(source_code, [])
     return tokens
 
-def consume_until_delimiter(start: int, source_code: str, end_delimiters: set[str]) -> tuple[str, int]:
-    end = start
-    while end < len(source_code) and source_code[end] not in end_delimiters:
-        end += 1
-    text = source_code[start:end]
-    return text, end
+def tokenize_helper(source_code: str, tokens: list[Token]) -> tuple[list[Token], str]:
+    if not source_code:
+        return tokens, source_code
+    ch, rest = source_code[0], source_code[1:]
+    if ch in CharSet.SPACE.value:
+        return tokenize_helper(rest, tokens)
+    elif ch in CharSet.LPAREN.value:
+        return tokenize_helper(rest, tokens + [TokenLParen()])
+    elif ch in CharSet.RPAREN.value:
+        return tokenize_helper(rest, tokens + [TokenRParen()])
+    elif ch in CharSet.INTEGER_START.value:
+        consumed, remaining = consume_until_delimiter(source_code, CharSet.INTEGER_END.value)
+        if is_valid_integer(consumed):
+            return tokenize_helper(remaining, tokens + [TokenInteger(value=int(consumed))])
+        else:
+            raise RuntimeError(f"Invalid integer '{consumed}'")
+    elif ch in CharSet.SYMBOL_START.value:
+        consumed, remaining = consume_until_delimiter(source_code, CharSet.SYMBOL_END.value)
+        if is_valid_symbol(consumed):
+            return tokenize_helper(remaining, tokens + [TokenSymbol(value=consumed)])
+        else:
+            raise RuntimeError(f"Invalid symbol '{consumed}'")
+    else:
+        raise RuntimeError(f"Unexpected character '{ch}'")
+
+def consume_until_delimiter(source_code: str, end_delimiters: set[str]) -> tuple[str, str]:
+    generator = (i for i, ch in enumerate(source_code) if ch in end_delimiters)
+    end = next(generator, len(source_code))
+    return source_code[:end], source_code[end:]
 
 def is_valid_integer(text: str) -> bool:
     return text and text[0] in CharSet.INTEGER_START.value and all(c in CharSet.INTEGER_REST.value for c in text[1:])
@@ -176,55 +163,58 @@ class If(Expression):
     consequent: Expression
     alternative: Expression
 
-TokenNode = Union[TokenNonParen, Deque["TokenNode"]]
+TokenNode = Union[TokenNonParen, list["TokenNode"]]
 
-def parse(tokens: deque[Token]) -> Expression:
-    token_node = parse_parenths(tokens)
-    return parse_expression(token_node)
+def parse(tokens: list[Token]) -> Expression:
+    token_node, _ = parse_parens(tokens)
+    expression, _ = parse_expression(token_node)
+    return expression
 
-def parse_parenths(tokens: deque[Token]) -> TokenNode:
+def parse_parens(tokens: list[Token]) -> tuple[TokenNode, list[Token]]:
     if not tokens:
         raise RuntimeError("Unexpected end of tokens (when parsing parentheses)")
-    token = tokens.popleft()
+    token, *rest = tokens
     if isinstance(token, (TokenInteger, TokenSymbol)):
-        return token
+        return token, rest
     elif isinstance(token, TokenLParen):
-        group = deque()
-        while tokens:
-            next_token = peek(tokens)
-            if isinstance(next_token, TokenRParen):
-                tokens.popleft()
-                return group
-            group.append(parse_parenths(tokens))
-        raise RuntimeError("Unexpected end of tokens")
+        return parse_parens_group(rest, [])
     else:
         raise RuntimeError(f"Unexpected token (when parsing parentheses): {token}")
 
-def parse_expression(t: TokenNode) -> Expression:
+def parse_parens_group(remaining: list[Token], group: TokenNode) -> tuple[TokenNode, list[Token]]:
+    if not remaining:
+        raise RuntimeError("Unexpected end of tokens (when parsing parentheses group)")
+    token, *rest = remaining
+    if isinstance(token, TokenRParen):
+        return group, rest
+    token_node, new_remaining = parse_parens(remaining)
+    return parse_parens_group(new_remaining, group + [token_node])
+
+def parse_expression(t: TokenNode) -> tuple[Expression, TokenNode]:
     if isinstance(t, TokenInteger):
-        return Integer(value=int(t.value))
+        return Integer(value=int(t.value)), []
     elif isinstance(t, TokenSymbol):
-        return Symbol(t.value)
-    elif isinstance(t, deque):
-        operator = peek(t)
+        return Symbol(t.value), []
+    elif isinstance(t, list):
+        operator = t[0]
         if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
             return parse_lambda(t)
         elif operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.IF.value:
             return parse_if(t)
         else:
-            return parse_invocation(t)
+            return parse_call(t)
     else:
         raise RuntimeError(f"Unexpected token (when parsing expression): {t}")
 
-def parse_lambda(ts: deque[TokenNode]) -> Lambda:
-    if len(ts) != 3:
+def parse_lambda(t: TokenNode) -> tuple[Lambda, TokenNode]:
+    if len(t) != 3:
         raise RuntimeError("Malformed lambda expression")
-    ts.popleft() # consume 'lambda'
+    _, parameters, body, *rest = t
     return Lambda(
-        parameters=list(map(parse_closure_parameter, ts.popleft())),
-        body=parse_expression(ts.popleft()),
+        parameters=list(map(parse_closure_parameter, parameters)),
+        body=parse_expression(body)[0],
         environment=None
-    )
+    ), rest
 
 def parse_closure_parameter(t: TokenNode) -> str:
     if isinstance(t, TokenSymbol):
@@ -232,23 +222,24 @@ def parse_closure_parameter(t: TokenNode) -> str:
     else:
         raise RuntimeError(f"Unexpected token in parameter list: {t}")
 
-def parse_if(ts: deque[TokenNode]) -> If:
-    if len(ts) != 4:
+def parse_if(t: TokenNode) -> tuple[If, TokenNode]:
+    if len(t) != 4:
         raise RuntimeError("Malformed if expression")
-    ts.popleft() # consume 'if'
+    _, condition, consequent, alternative, *rest = t
     return If(
-        condition=parse_expression(ts.popleft()), 
-        consequent=parse_expression(ts.popleft()), 
-        alternative=parse_expression(ts.popleft())
-    )
+        condition=parse_expression(condition)[0], 
+        consequent=parse_expression(consequent)[0], 
+        alternative=parse_expression(alternative)[0]
+    ), rest
 
-def parse_invocation(ts: deque[TokenNode]) -> Call:
-    if len(ts) == 0:
+def parse_call(t: TokenNode) -> tuple[Call, TokenNode]:
+    if len(t) == 0:
         raise RuntimeError("Malformed call expression")
+    operator, *rest = t
     return Call(
-        operator=parse_expression(ts.popleft()),
-        arguments=list(map(parse_expression, ts))
-    )
+        operator=parse_expression(operator)[0],
+        arguments=list(map(lambda t: parse_expression(t)[0], rest))
+    ), rest
 
 ### EVALUATE ###
 
@@ -287,12 +278,12 @@ def evaluate_expression(expression: Expression, environment: Optional[Frame] = N
         else:
             return evaluate_expression(expression.alternative, environment)
     elif isinstance(expression, Call):
-        return evaluate_invocation(expression, environment)
+        return evaluate_call(expression, environment)
     else:
         logging.error("Cannot evaluate that expression quite yet")
         return None
 
-def evaluate_invocation(expression: Call, environment: Frame) -> Value:
+def evaluate_call(expression: Call, environment: Frame) -> Value:
     operator = evaluate_expression(expression.operator, environment)
     if isinstance(operator, Callable):
         arguments = [evaluate_expression(arg, environment) for arg in expression.arguments]
