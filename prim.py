@@ -6,44 +6,46 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import (
     Callable,
+    Mapping,
     Optional,
     Union,
 )
+from types import MappingProxyType
 
 ### TOKENIZE ###
 
 class CharSet(Enum):
-    SPACE = set(string.whitespace)
-    LPAREN = set("(")
-    RPAREN = set(")")
-    INTEGER_START = set(string.digits + "-")
-    INTEGER_REST = set(string.digits)
-    INTEGER_END = set(string.whitespace + "()")
-    SYMBOL_START = set(string.ascii_lowercase)
-    SYMBOL_REST = set(string.ascii_lowercase + string.digits + "_")
-    SYMBOL_END = set(string.whitespace + "()")
+    SPACE = frozenset(string.whitespace)
+    LPAREN = frozenset("(")
+    RPAREN = frozenset(")")
+    INTEGER_START = frozenset(string.digits + "-")
+    INTEGER_REST = frozenset(string.digits)
+    INTEGER_END = frozenset(string.whitespace + "()")
+    SYMBOL_START = frozenset(string.ascii_lowercase)
+    SYMBOL_REST = frozenset(string.ascii_lowercase + string.digits + "_")
+    SYMBOL_END = frozenset(string.whitespace + "()")
 
-@dataclass
+@dataclass(frozen=True)
 class Token:
     pass
 
-@dataclass
+@dataclass(frozen=True)
 class TokenLParen(Token):
     pass
 
-@dataclass
+@dataclass(frozen=True)
 class TokenRParen(Token):
     pass
 
-@dataclass
+@dataclass(frozen=True)
 class TokenNonParen(Token):
     pass
 
-@dataclass
+@dataclass(frozen=True)
 class TokenInteger(TokenNonParen):
     value: int
 
-@dataclass
+@dataclass(frozen=True)
 class TokenSymbol(TokenNonParen):
     """
     A symbol is a sequence of characters that can represent many things:
@@ -106,25 +108,25 @@ class Keyword(Enum):
 class Expression:
     pass
 
-@dataclass
+@dataclass(frozen=True)
 class Integer(Expression):
     value: int
 
-@dataclass
+@dataclass(frozen=True)
 class Symbol(Expression):
     value: str
 
-@dataclass
+@dataclass(frozen=True)
 class Lambda(Expression):
     parameters: list[str]
     body: Expression
 
-@dataclass
+@dataclass(frozen=True)
 class Call(Expression):
     operator: Expression
     arguments: list[Expression]
 
-@dataclass
+@dataclass(frozen=True)
 class If(Expression):
     condition: Expression
     consequent: Expression
@@ -211,15 +213,15 @@ def parse_call(t: TokenNode) -> tuple[Call, TokenNode]:
 
 Value = Union[int, bool, Callable, "Closure", None]
 
-@dataclass
+@dataclass(frozen=True)
 class Closure:
     parameters: list[str]
     body: Expression
     environment: "Frame"
 
-@dataclass
+@dataclass(frozen=True)
 class Frame:
-    bindings: dict[str, Value]
+    bindings: Mapping[str, Value]
     parent: Optional["Frame"]
 
     def get(self, name: str) -> Optional[Value]:
@@ -230,7 +232,7 @@ class Frame:
         else:
             return None
 
-BUILTINS: dict[str, Callable] = {
+BUILTINS: Mapping[str, Callable] = MappingProxyType({
     "add": lambda a, b: a + b,
     "sub": lambda a, b: a - b,
     "mul": lambda a, b: a * b,
@@ -241,8 +243,7 @@ BUILTINS: dict[str, Callable] = {
     "leq": lambda a, b: a <= b,
     "geq": lambda a, b: a >= b,
     "pair": lambda a, b: (a, b),
-    "list": lambda *args: list(args),
-}
+})
 
 def evaluate(expression: Expression) -> Value:
     environment = base_environment()
@@ -288,9 +289,9 @@ def evaluate_call(expression: Call, environment: Frame) -> Value:
     elif isinstance(operator, Closure):
         if len(operator.parameters) != len(expression.arguments):
             raise RuntimeError("Argument count mismatch")
-        bindings = {
+        bindings = MappingProxyType({
             param: evaluate_expression(arg, environment) for param, arg in zip(operator.parameters, expression.arguments)
-        }
+        })
         child_environment = Frame(
             bindings=bindings,
             parent=operator.environment
