@@ -1,13 +1,13 @@
 from prim import (
     base_environment,
-    Lambda,
-    evaluate_expression,
+    Call,
+    Closure,
     evaluate,
-    Symbol,
     If,
     Integer,
-    Call,
+    Lambda,
     parse,
+    Symbol,
     TokenInteger,
     tokenize,
     TokenLParen,
@@ -89,7 +89,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ]
             ),
-            Lambda(parameters=['x'], body=Symbol('x'), environment=None)
+            Lambda(parameters=['x'], body=Symbol('x'))
         )
     
     def test_call(self):
@@ -108,7 +108,7 @@ class TestParse(TestCase):
                     TokenRParen(),
                 ]
             ),
-            Call(operator=Lambda(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
+            Call(operator=Lambda(parameters=['x'], body=Symbol('x')), arguments=[Integer(1)])
         )
     
     def test_builtins(self):
@@ -160,19 +160,20 @@ class TestEvaluate(TestCase):
         self.assertEqual(evaluate(Integer(123)), 123)
     
     def test_lambda(self):
-        environment = base_environment()
         self.assertEqual(
-            evaluate_expression(
-                Lambda(parameters=['x'], body=Symbol('x'), environment=None),
-                environment
+            evaluate(
+                Lambda(parameters=['x'], body=Symbol('x')),
             ),
-            Lambda(parameters=['x'], body=Symbol('x'), environment=environment)
+            Closure(parameters=['x'], body=Symbol('x'), environment=base_environment())
         )
     
     def test_call(self):
         self.assertEqual(
             evaluate(
-                Call(operator=Lambda(parameters=['x'], body=Symbol('x'), environment=None), arguments=[Integer(1)])
+                Call(
+                    operator=Lambda(parameters=['x'], body=Symbol('x')),
+                    arguments=[Integer(1)]
+                )
             ),
             1
         )

@@ -103,38 +103,6 @@ class Keyword(Enum):
     LAMBDA = "lambda"
     IF = "if"
 
-Value = Union[int, bool, Callable, None]
-
-BUILTINS = {
-    "add": lambda a, b: a + b,
-    "sub": lambda a, b: a - b,
-    "mul": lambda a, b: a * b,
-    "div": lambda a, b: a // b,
-    "eq": lambda a, b: a == b,
-    "lt": lambda a, b: a < b,
-    "gt": lambda a, b: a > b,
-    "leq": lambda a, b: a <= b,
-    "geq": lambda a, b: a >= b,
-    "pair": lambda a, b: (a, b),
-    "list": lambda *args: list(args),
-}
-
-class Frame:
-    def __init__(self, parent: Optional["Frame"] = None):
-        self.bindings: dict[str, Value] = {}
-        self.parent: "Frame" = parent
-
-    def get(self, name: str) -> Optional[Value]:
-        if name in self.bindings:
-            return self.bindings[name]
-        elif self.parent:
-            return self.parent.get(name)
-        else:
-            return None
-
-    def set(self, name: str, value: Value):
-        self.bindings[name] = value
-
 class Expression:
     pass
 
@@ -150,7 +118,6 @@ class Symbol(Expression):
 class Lambda(Expression):
     parameters: list[str]
     body: Expression
-    environment: Frame
 
 @dataclass
 class Call(Expression):
@@ -213,7 +180,6 @@ def parse_lambda(t: TokenNode) -> tuple[Lambda, TokenNode]:
     return Lambda(
         parameters=list(map(parse_closure_parameter, parameters)),
         body=parse_expression(body)[0],
-        environment=None
     ), rest
 
 def parse_closure_parameter(t: TokenNode) -> str:
@@ -243,15 +209,47 @@ def parse_call(t: TokenNode) -> tuple[Call, TokenNode]:
 
 ### EVALUATE ###
 
+Value = Union[int, bool, Callable, "Closure", None]
+
+@dataclass
+class Closure:
+    parameters: list[str]
+    body: Expression
+    environment: "Frame"
+
+@dataclass
+class Frame:
+    bindings: dict[str, Value]
+    parent: Optional["Frame"]
+
+    def get(self, name: str) -> Optional[Value]:
+        if name in self.bindings:
+            return self.bindings[name]
+        elif self.parent:
+            return self.parent.get(name)
+        else:
+            return None
+
+BUILTINS: dict[str, Callable] = {
+    "add": lambda a, b: a + b,
+    "sub": lambda a, b: a - b,
+    "mul": lambda a, b: a * b,
+    "div": lambda a, b: a // b,
+    "eq": lambda a, b: a == b,
+    "lt": lambda a, b: a < b,
+    "gt": lambda a, b: a > b,
+    "leq": lambda a, b: a <= b,
+    "geq": lambda a, b: a >= b,
+    "pair": lambda a, b: (a, b),
+    "list": lambda *args: list(args),
+}
+
 def evaluate(expression: Expression) -> Value:
     environment = base_environment()
     return evaluate_expression(expression, environment)
 
 def base_environment() -> Frame:
-    environment = Frame()
-    for name, value in BUILTINS.items():
-        environment.set(name, value)
-    return environment
+    return Frame(bindings=BUILTINS, parent=None)
 
 def evaluate_expression(expression: Expression, environment: Optional[Frame] = None) -> Value:
     if isinstance(expression, Integer):
@@ -270,7 +268,7 @@ def evaluate_expression(expression: Expression, environment: Optional[Frame] = N
             raise RuntimeError(f"Undefined identifier: {expression.value}")
         return value
     elif isinstance(expression, Lambda):
-        return Lambda(parameters=expression.parameters, body=expression.body, environment=environment)
+        return Closure(parameters=expression.parameters, body=expression.body, environment=environment)
     elif isinstance(expression, If):
         condition = evaluate_expression(expression.condition, environment)
         if condition:
@@ -280,23 +278,26 @@ def evaluate_expression(expression: Expression, environment: Optional[Frame] = N
     elif isinstance(expression, Call):
         return evaluate_call(expression, environment)
     else:
-        logging.error("Cannot evaluate that expression quite yet")
-        return None
+        raise RuntimeError(f"Unsupported expression: {expression}")
 
 def evaluate_call(expression: Call, environment: Frame) -> Value:
     operator = evaluate_expression(expression.operator, environment)
     if isinstance(operator, Callable):
         arguments = [evaluate_expression(arg, environment) for arg in expression.arguments]
         return operator(*arguments)
-    elif isinstance(operator, Lambda):
-        child_environment = Frame(parent=operator.environment)
+    elif isinstance(operator, Closure):
         if len(operator.parameters) != len(expression.arguments):
             raise RuntimeError("Argument count mismatch")
-        for param, arg in zip(operator.parameters, expression.arguments):
-            child_environment.set(param, evaluate_expression(arg, environment))
+        bindings = {
+            param: evaluate_expression(arg, environment) for param, arg in zip(operator.parameters, expression.arguments)
+        }
+        child_environment = Frame(
+            bindings=bindings,
+            parent=operator.environment
+        )
         return evaluate_expression(operator.body, child_environment)
     else:
-        raise RuntimeError("Attempting to call a non-lambda expression")
+        raise RuntimeError("Call expression must have a callable operator")
 
 ### MAIN ###
 
