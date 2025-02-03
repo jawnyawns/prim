@@ -4,13 +4,12 @@ import sys
 
 from dataclasses import dataclass
 from enum import Enum
+from types import MappingProxyType
 from typing import (
     Callable,
     Mapping,
     Optional,
-    Union,
 )
-from types import MappingProxyType
 
 ### TOKENIZE ###
 
@@ -85,16 +84,16 @@ def tokenize_helper(source_code: str, tokens: list[Token]) -> tuple[list[Token],
     else:
         raise RuntimeError(f"Unexpected character '{ch}'")
 
-def consume_until_delimiter(source_code: str, end_delimiters: set[str]) -> tuple[str, str]:
+def consume_until_delimiter(source_code: str, end_delimiters: frozenset[str]) -> tuple[str, str]:
     generator = (i for i, ch in enumerate(source_code) if ch in end_delimiters)
     end = next(generator, len(source_code))
     return source_code[:end], source_code[end:]
 
 def is_valid_integer(text: str) -> bool:
-    return text and text[0] in CharSet.INTEGER_START.value and all(c in CharSet.INTEGER_REST.value for c in text[1:])
+    return text[0] in CharSet.INTEGER_START.value and all(c in CharSet.INTEGER_REST.value for c in text[1:]) if text else False
 
 def is_valid_symbol(text: str) -> bool:
-    return text and text[0] in CharSet.SYMBOL_START.value and all(c in CharSet.SYMBOL_REST.value for c in text[1:])
+    return text[0] in CharSet.SYMBOL_START.value and all(c in CharSet.SYMBOL_REST.value for c in text[1:]) if text else False
 
 ### PARSE ###
 
@@ -132,7 +131,7 @@ class If(Expr):
     consequent: Expr
     alternative: Expr
 
-TokenNode = Union[TokenNonParen, list["TokenNode"]]
+TokenNode = TokenNonParen | list["TokenNode"]
 
 def parse(tokens: list[Token]) -> Expr:
     token_node, _ = parse_parens(tokens)
@@ -157,6 +156,8 @@ def parse_parens_group(remaining: list[Token], group: TokenNode) -> tuple[TokenN
     if isinstance(token, TokenRParen):
         return group, rest
     token_node, new_remaining = parse_parens(remaining)
+    if not isinstance(group, list):
+        raise RuntimeError(f"Group was not a list: {group}")
     return parse_parens_group(new_remaining, group + [token_node])
 
 def parse_expr(t: TokenNode) -> tuple[Expr, TokenNode]:
@@ -176,9 +177,11 @@ def parse_expr(t: TokenNode) -> tuple[Expr, TokenNode]:
         raise RuntimeError(f"Unexpected token (when parsing expression): {t}")
 
 def parse_lambda(t: TokenNode) -> tuple[Lambda, TokenNode]:
-    if len(t) != 3:
+    if not isinstance(t, list) or len(t) != 3:
         raise RuntimeError("Malformed lambda expression")
     _, parameters, body, *rest = t
+    if not isinstance(parameters, list):
+        raise RuntimeError("Malformed lambda expression parameters")
     return Lambda(
         parameters=list(map(parse_closure_parameter, parameters)),
         body=parse_expr(body)[0],
@@ -191,7 +194,7 @@ def parse_closure_parameter(t: TokenNode) -> str:
         raise RuntimeError(f"Unexpected token in parameter list: {t}")
 
 def parse_if(t: TokenNode) -> tuple[If, TokenNode]:
-    if len(t) != 4:
+    if not isinstance(t, list) or len(t) != 4:
         raise RuntimeError("Malformed if expression")
     _, condition, consequent, alternative, *rest = t
     return If(
@@ -201,7 +204,7 @@ def parse_if(t: TokenNode) -> tuple[If, TokenNode]:
     ), rest
 
 def parse_call(t: TokenNode) -> tuple[Call, TokenNode]:
-    if len(t) == 0:
+    if not isinstance(t, list) or len(t) == 0:
         raise RuntimeError("Malformed call expression")
     operator, *rest = t
     return Call(
@@ -211,8 +214,6 @@ def parse_call(t: TokenNode) -> tuple[Call, TokenNode]:
 
 ### EVAL ###
 
-Value = Union[int, bool, Callable, "Closure", None]
-
 @dataclass(frozen=True)
 class Closure:
     parameters: list[str]
@@ -221,10 +222,10 @@ class Closure:
 
 @dataclass(frozen=True)
 class Frame:
-    bindings: Mapping[str, Value]
+    bindings: Mapping[str, "Value"]
     parent: Optional["Frame"]
 
-    def get(self, name: str) -> Optional[Value]:
+    def get(self, name: str) -> Optional["Value"]:
         if name in self.bindings:
             return self.bindings[name]
         elif self.parent:
@@ -232,18 +233,35 @@ class Frame:
         else:
             return None
 
-BUILTINS: Mapping[str, Callable] = MappingProxyType({
-    "add": lambda a, b: a + b,
-    "sub": lambda a, b: a - b,
-    "mul": lambda a, b: a * b,
-    "div": lambda a, b: a // b,
-    "eq": lambda a, b: a == b,
-    "lt": lambda a, b: a < b,
-    "gt": lambda a, b: a > b,
-    "leq": lambda a, b: a <= b,
-    "geq": lambda a, b: a >= b,
-    "pair": lambda a, b: (a, b),
+class Builtin:
+    pass
+
+@dataclass(frozen=True)
+class BuiltinBinaryMath(Builtin):
+    fn: Callable[[int, int], int]
+
+@dataclass(frozen=True)
+class BuiltinBinaryPredicate(Builtin):
+    fn: Callable[[int, int], bool]
+
+@dataclass(frozen=True)
+class BuiltinPair(Builtin):
+    fn: Callable[["Value", "Value"], tuple["Value", "Value"]]
+
+BUILTINS: Mapping[str, Builtin] = MappingProxyType({
+    "add": BuiltinBinaryMath(fn=lambda a, b: a + b),
+    "sub": BuiltinBinaryMath(fn=lambda a, b: a - b),
+    "mul": BuiltinBinaryMath(fn=lambda a, b: a * b),
+    "div": BuiltinBinaryMath(fn=lambda a, b: a // b),
+    "eq": BuiltinBinaryPredicate(fn=lambda a, b: a == b),
+    "lt": BuiltinBinaryPredicate(fn=lambda a, b: a < b),
+    "gt": BuiltinBinaryPredicate(fn=lambda a, b: a > b),
+    "leq": BuiltinBinaryPredicate(fn=lambda a, b: a <= b),
+    "geq": BuiltinBinaryPredicate(fn=lambda a, b: a >= b),
+    "pair": BuiltinPair(fn=lambda a, b: (a, b)),
 })
+
+Value = int | bool | Builtin | Closure | None | tuple["Value", "Value"]
 
 def eval(expr: Expr) -> Value:
     env = base_env()
@@ -252,7 +270,7 @@ def eval(expr: Expr) -> Value:
 def base_env() -> Frame:
     return Frame(bindings=BUILTINS, parent=None)
 
-def eval_expr(expr: Expr, env: Optional[Frame] = None) -> Value:
+def eval_expr(expr: Expr, env: Frame) -> Value:
     if isinstance(expr, Integer):
         return int(expr.value)
     elif isinstance(expr, Symbol):
@@ -283,14 +301,26 @@ def eval_expr(expr: Expr, env: Optional[Frame] = None) -> Value:
 
 def eval_call(expr: Call, env: Frame) -> Value:
     operator = eval_expr(expr.operator, env)
-    if isinstance(operator, Callable):
-        arguments = [eval_expr(arg, env) for arg in expr.arguments]
-        return operator(*arguments)
+    arguments = [eval_expr(arg, env) for arg in expr.arguments]
+    if isinstance(operator, Builtin):
+        if isinstance(operator, (BuiltinBinaryMath, BuiltinBinaryPredicate)):
+            if len(arguments) != 2:
+                raise RuntimeError("Expected 2 arguments")
+            a, b = arguments
+            if not isinstance(a, int) or not isinstance(b, int):
+                raise RuntimeError("Expected 2 integer arguments")
+            return operator.fn(a, b)
+        elif isinstance(operator, BuiltinPair):
+            if len(arguments) != 2:
+                raise RuntimeError("Expected 2 arguments")
+            a, b = arguments
+            return operator.fn(a, b)
+        raise RuntimeError("Unsupported operator")
     elif isinstance(operator, Closure):
         if len(operator.parameters) != len(expr.arguments):
             raise RuntimeError("Argument count mismatch")
         bindings = MappingProxyType({
-            param: eval_expr(arg, env) for param, arg in zip(operator.parameters, expr.arguments)
+            param: arg for param, arg in zip(operator.parameters, arguments)
         })
         child_env = Frame(
             bindings=bindings,
@@ -298,7 +328,7 @@ def eval_call(expr: Call, env: Frame) -> Value:
         )
         return eval_expr(operator.body, child_env)
     else:
-        raise RuntimeError("Call expression must have a callable operator")
+        raise RuntimeError("Unsupported operator")
 
 ### MAIN ###
 

@@ -20,6 +20,12 @@ python3 prim.py examples/factorial.prim
 python3 -m unittest discover -s test
 ```
 
+## Type checking
+
+```
+mypy prim.py
+```
+
 ## Copyright
 
 © John Chin-Jew. All rights reserved.
