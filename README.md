@@ -11,19 +11,19 @@ Requires **Python 3.12** or higher.
 Example usage:
 
 ```
-python3 prim.py examples/factorial.prim
+python3 -m prim examples/factorial.prim
 ```
 
 ## Testing
 
 ```
-python3 -m unittest discover -s test
+python3 -m unittest discover -s test/*
 ```
 
 ## Type checking
 
 ```
-mypy prim.py
+mypy -p prim --strict
 ```
 
 ## Copyright
