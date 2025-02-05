@@ -28,10 +28,6 @@ class BuiltinBinaryMath(Builtin):
 class BuiltinBinaryPredicate(Builtin):
     fn: Callable[[int, int], bool]
 
-@dataclass(frozen=True)
-class BuiltinPair(Builtin):
-    fn: Callable[["Value", "Value"], tuple["Value", "Value"]]
-
 BUILTINS: Mapping[str, Builtin] = MappingProxyType({
     "add": BuiltinBinaryMath(fn=lambda a, b: a + b),
     "sub": BuiltinBinaryMath(fn=lambda a, b: a - b),
@@ -42,7 +38,6 @@ BUILTINS: Mapping[str, Builtin] = MappingProxyType({
     "gt": BuiltinBinaryPredicate(fn=lambda a, b: a > b),
     "leq": BuiltinBinaryPredicate(fn=lambda a, b: a <= b),
     "geq": BuiltinBinaryPredicate(fn=lambda a, b: a >= b),
-    "pair": BuiltinPair(fn=lambda a, b: (a, b)),
 })
 
 ### ENVIRONMENT ###
@@ -60,18 +55,20 @@ class Frame:
         else:
             return None
 
+def base_env() -> Frame:
+    return Frame(bindings=BUILTINS, parent=None)
+
+### VALUES ###
+
 @dataclass(frozen=True)
 class Closure:
     params: list[str]
     body: Expr
     env: "Frame"
 
-def base_env() -> Frame:
-    return Frame(bindings=BUILTINS, parent=None)
-
 ### EVALUATION ###
 
-Value = int | bool | Builtin | Closure | None | tuple["Value", "Value"]
+Value = int | bool | Builtin | Closure
 
 def eval(expr: Expr) -> Value:
     env = base_env()
@@ -85,8 +82,6 @@ def _eval_expr(expr: Expr, env: Frame) -> Value:
             return True
         elif expr.value == Keyword.FALSE.value:
             return False
-        elif expr.value == Keyword.NONE.value:
-            return None
         if env is None:
             raise RuntimeError(f"Undefined identifier: {expr.value}")
         value = env.get(expr.value)
@@ -116,11 +111,6 @@ def _eval_call(expr: CallExpr, env: Frame) -> Value:
             a, b = args
             if not isinstance(a, int) or not isinstance(b, int):
                 raise RuntimeError("Expected 2 integer arguments")
-            return operator.fn(a, b)
-        elif isinstance(operator, BuiltinPair):
-            if len(args) != 2:
-                raise RuntimeError("Expected 2 arguments")
-            a, b = args
             return operator.fn(a, b)
         raise RuntimeError("Unsupported operator")
     elif isinstance(operator, Closure):
