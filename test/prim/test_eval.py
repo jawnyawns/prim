@@ -45,10 +45,34 @@ class TestEval(TestCase):
             3
         )
     
-    def test_eval_boolean_expr(self):
+    def test_eval_boolean_expr_with_ints(self):
         self.assertEqual(
             eval(
                 CallExpr(operator=SymbolLiteral('eq'), args=[IntLiteral(1), IntLiteral(1)])
+            ),
+            True
+        )
+    
+    def test_eval_and(self):
+        self.assertEqual(
+            eval(
+                CallExpr(operator=SymbolLiteral('and'), args=[SymbolLiteral("true"), SymbolLiteral("true")])
+            ),
+            True
+        )
+    
+    def test_eval_or(self):
+        self.assertEqual(
+            eval(
+                CallExpr(operator=SymbolLiteral('or'), args=[SymbolLiteral("true"), SymbolLiteral("false")])
+            ),
+            True
+        )
+    
+    def test_eval_not(self):
+        self.assertEqual(
+            eval(
+                CallExpr(operator=SymbolLiteral('not'), args=[SymbolLiteral("false")])
             ),
             True
         )
