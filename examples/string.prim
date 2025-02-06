@@ -1,0 +1,5 @@
+(
+  (lambda (x) x)
+  "i'm a raw string... here comes a backslash: \... here comes a newline:
+... and now a tab:	... and now an emoji: 🤓... and now some korean: 김치"
+)

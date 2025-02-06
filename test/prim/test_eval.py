@@ -8,6 +8,7 @@ from prim.eval import (
     IntLiteral,
     LambdaExpr,
     SymbolLiteral,
+    StringLiteral,
 )
 
 class TestEval(TestCase):
@@ -87,4 +88,15 @@ class TestEval(TestCase):
                 )
             ),
             1
+        )
+
+    def test_eval_string(self):
+        self.assertEqual(
+            eval(
+                CallExpr(
+                    operator=LambdaExpr(params=['x'], body=SymbolLiteral('x')),
+                    args=[StringLiteral("hey")]
+                )
+            ),
+            "hey"
         )

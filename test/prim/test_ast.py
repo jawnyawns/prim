@@ -5,10 +5,12 @@ from prim.ast import (
     LambdaExpr,
     parse,
     SymbolLiteral,
+    StringLiteral,
     TokenInt,
     TokenLParen,
     TokenRParen,
     TokenSymbol,
+    TokenString,
 )
 from unittest import TestCase
 
@@ -106,5 +108,23 @@ class TestAST(TestCase):
                 condition=CallExpr(operator=SymbolLiteral(value='lt'),
                 args=[IntLiteral(value=1), IntLiteral(value=2)]),
                 consequent=IntLiteral(value=1), alternative=IntLiteral(value=2)
+            )
+        )
+
+    def test_parse_string(self):
+        self.assertEqual(
+            parse(
+                [
+                    TokenLParen(),
+                    TokenSymbol("hello"),
+                    TokenString("world"),
+                    TokenString("goodbye"),
+                    TokenInt(123),
+                    TokenRParen(),
+                ]
+            ),
+            CallExpr(
+                operator=SymbolLiteral("hello"),
+                args=[StringLiteral("world"), StringLiteral("goodbye"), IntLiteral(123)]
             )
         )

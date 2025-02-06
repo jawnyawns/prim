@@ -5,6 +5,7 @@ from prim.lex import (
     TokenLParen,
     TokenRParen,
     TokenSymbol,
+    TokenString,
 )
 
 class TestLex(TestCase):
@@ -49,6 +50,19 @@ class TestLex(TestCase):
                 TokenSymbol("lt"),
                 TokenSymbol("x"),
                 TokenInt(5),
+                TokenRParen(),
+            ]
+        )
+    
+    def test_tokenize_string(self):
+        self.assertEqual(
+            tokenize("(hello \"world\" \"goodbye\" 123)"),
+            [
+                TokenLParen(),
+                TokenSymbol("hello"),
+                TokenString("world"),
+                TokenString("goodbye"),
+                TokenInt(123),
                 TokenRParen(),
             ]
         )

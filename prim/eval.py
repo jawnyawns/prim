@@ -6,6 +6,7 @@ from prim.ast import (
     IntLiteral,
     LambdaExpr,
     SymbolLiteral,
+    StringLiteral,
 )
 from prim.keyword import Keyword
 from types import MappingProxyType
@@ -79,7 +80,7 @@ class Closure:
 
 ### EVALUATION ###
 
-Value = int | bool | Builtin | Closure
+Value = int | bool | str | Builtin | Closure
 
 def eval(expr: Expr) -> Value:
     env = base_env()
@@ -90,6 +91,8 @@ def _eval_expr(expr: Expr, env: Frame) -> Value:
         return int(expr.value)
     elif isinstance(expr, SymbolLiteral):
         return _eval_symbol(expr, env)
+    elif isinstance(expr, StringLiteral):
+        return str(expr.value)
     elif isinstance(expr, LambdaExpr):
         return Closure(params=expr.params, body=expr.body, env=env)
     elif isinstance(expr, IfExpr):

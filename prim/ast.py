@@ -7,6 +7,7 @@ from prim.lex import (
     TokenNonParen,
     TokenRParen,
     TokenSymbol,
+    TokenString,
 )
 
 ### AST ###
@@ -20,6 +21,10 @@ class IntLiteral(Expr):
 
 @dataclass(frozen=True)
 class SymbolLiteral(Expr):
+    value: str
+
+@dataclass(frozen=True)
+class StringLiteral(Expr):
     value: str
 
 @dataclass(frozen=True)
@@ -51,7 +56,7 @@ def _parse_parens(tokens: list[Token]) -> tuple[_TokenNode, list[Token]]:
     if not tokens:
         raise RuntimeError("Unexpected end of tokens (when parsing parentheses)")
     token, *rest = tokens
-    if isinstance(token, (TokenInt, TokenSymbol)):
+    if isinstance(token, (TokenInt, TokenSymbol, TokenString)):
         return token, rest
     elif isinstance(token, TokenLParen):
         return _parse_parens_group(rest, [])
@@ -74,6 +79,8 @@ def _parse_expr(t: _TokenNode) -> tuple[Expr, _TokenNode]:
         return IntLiteral(value=int(t.value)), []
     elif isinstance(t, TokenSymbol):
         return SymbolLiteral(t.value), []
+    elif isinstance(t, TokenString):
+        return StringLiteral(t.value), []
     elif isinstance(t, list):
         operator = t[0]
         if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
