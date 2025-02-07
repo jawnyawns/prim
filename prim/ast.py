@@ -39,8 +39,8 @@ class CallExpr(Expr):
 
 @dataclass(frozen=True)
 class IfExpr(Expr):
-    condition: Expr
-    consequent: Expr
+    conditions: list[Expr]
+    consequents: list[Expr]
     alternative: Expr
 
 ### PARSING ###
@@ -49,8 +49,7 @@ _TokenNode = TokenNonParen | list["_TokenNode"]
 
 def parse(tokens: list[Token]) -> Expr:
     token_node, _ = _parse_parens(tokens)
-    expr, _ = _parse_expr(token_node)
-    return expr
+    return _parse_expr(token_node)
 
 def _parse_parens(tokens: list[Token]) -> tuple[_TokenNode, list[Token]]:
     if not tokens:
@@ -74,13 +73,13 @@ def _parse_parens_group(remaining: list[Token], group: _TokenNode) -> tuple[_Tok
         raise RuntimeError(f"Group was not a list: {group}")
     return _parse_parens_group(new_remaining, group + [token_node])
 
-def _parse_expr(t: _TokenNode) -> tuple[Expr, _TokenNode]:
+def _parse_expr(t: _TokenNode) -> Expr:
     if isinstance(t, TokenInt):
-        return IntLiteral(value=int(t.value)), []
+        return IntLiteral(value=int(t.value))
     elif isinstance(t, TokenSymbol):
-        return SymbolLiteral(t.value), []
+        return SymbolLiteral(t.value)
     elif isinstance(t, TokenString):
-        return StringLiteral(t.value), []
+        return StringLiteral(t.value)
     elif isinstance(t, list):
         operator = t[0]
         if operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.LAMBDA.value:
@@ -92,16 +91,16 @@ def _parse_expr(t: _TokenNode) -> tuple[Expr, _TokenNode]:
     else:
         raise RuntimeError(f"Unexpected token (when parsing expression): {t}")
 
-def _parse_lambda(t: _TokenNode) -> tuple[LambdaExpr, _TokenNode]:
+def _parse_lambda(t: _TokenNode) -> LambdaExpr:
     if not isinstance(t, list) or len(t) != 3:
         raise RuntimeError("Malformed lambda expression")
-    _, params, body, *rest = t
+    _, params, body = t
     if not isinstance(params, list):
         raise RuntimeError("Malformed lambda expression parameters")
     return LambdaExpr(
         params=list(map(_parse_closure_param, params)),
-        body=_parse_expr(body)[0],
-    ), rest
+        body=_parse_expr(body),
+    )
 
 def _parse_closure_param(t: _TokenNode) -> str:
     if isinstance(t, TokenSymbol):
@@ -109,21 +108,24 @@ def _parse_closure_param(t: _TokenNode) -> str:
     else:
         raise RuntimeError(f"Unexpected token in parameter list: {t}")
 
-def _parse_if(t: _TokenNode) -> tuple[IfExpr, _TokenNode]:
-    if not isinstance(t, list) or len(t) != 4:
-        raise RuntimeError("Malformed if expression")
-    _, condition, consequent, alternative, *rest = t
+def _parse_if(t: _TokenNode) -> IfExpr:
+    if not isinstance(t, list) or len(t) < 4 or len(t) % 2 == 1:
+        raise RuntimeError("Malformed if expression", )
+    _, *rest = t
+    conditions = rest[:-1][::2]
+    consequents = rest[1::2]
+    default = rest[-1]
     return IfExpr(
-        condition=_parse_expr(condition)[0], 
-        consequent=_parse_expr(consequent)[0], 
-        alternative=_parse_expr(alternative)[0]
-    ), rest
+        conditions=list(map(lambda t: _parse_expr(t), conditions)),
+        consequents=list(map(lambda t: _parse_expr(t), consequents)), 
+        alternative=_parse_expr(default)
+    )
 
-def _parse_call(t: _TokenNode) -> tuple[CallExpr, _TokenNode]:
+def _parse_call(t: _TokenNode) -> CallExpr:
     if not isinstance(t, list) or len(t) == 0:
         raise RuntimeError("Malformed call expression")
     operator, *rest = t
     return CallExpr(
-        operator=_parse_expr(operator)[0],
-        args=list(map(lambda t: _parse_expr(t)[0], rest))
-    ), rest
+        operator=_parse_expr(operator),
+        args=list(map(lambda t: _parse_expr(t), rest))
+    )

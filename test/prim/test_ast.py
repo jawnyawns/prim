@@ -105,9 +105,14 @@ class TestAST(TestCase):
                 ]
             ),
             IfExpr(
-                condition=CallExpr(operator=SymbolLiteral(value='lt'),
-                args=[IntLiteral(value=1), IntLiteral(value=2)]),
-                consequent=IntLiteral(value=1), alternative=IntLiteral(value=2)
+                conditions=[
+                    CallExpr(
+                        operator=SymbolLiteral(value='lt'),
+                        args=[IntLiteral(value=1), IntLiteral(value=2)]
+                    )
+                ],
+                consequents=[IntLiteral(value=1)],
+                alternative=IntLiteral(value=2)
             )
         )
 

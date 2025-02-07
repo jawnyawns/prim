@@ -115,11 +115,10 @@ def _eval_symbol(expr: SymbolLiteral, env: Frame) -> Value:
     return value
 
 def _eval_if(expr: IfExpr, env: Frame) -> Value:
-    condition = _eval_expr(expr.condition, env)
-    if condition:
-        return _eval_expr(expr.consequent, env)
-    else:
-        return _eval_expr(expr.alternative, env)
+    for condition, consequent in zip(expr.conditions, expr.consequents):
+        if _eval_expr(condition, env):
+            return _eval_expr(consequent, env)
+    return _eval_expr(expr.alternative, env)
 
 def _eval_call(expr: CallExpr, env: Frame) -> Value:
     operator = _eval_expr(expr.operator, env)
