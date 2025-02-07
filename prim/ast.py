@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from prim.keyword import Keyword
 from prim.lex import (
     Token,
+    TokenFloat,
     TokenInt,
     TokenLParen,
     TokenNonParen,
@@ -18,6 +19,10 @@ class Expr:
 @dataclass(frozen=True)
 class IntLiteral(Expr):
     value: int
+
+@dataclass(frozen=True)
+class FloatLiteral(Expr):
+    value: float
 
 @dataclass(frozen=True)
 class SymbolLiteral(Expr):
@@ -55,7 +60,7 @@ def _parse_parens(tokens: list[Token]) -> tuple[_TokenNode, list[Token]]:
     if not tokens:
         raise RuntimeError("Unexpected end of tokens (when parsing parentheses)")
     token, *rest = tokens
-    if isinstance(token, (TokenInt, TokenSymbol, TokenString)):
+    if isinstance(token, (TokenInt, TokenFloat, TokenSymbol, TokenString)):
         return token, rest
     elif isinstance(token, TokenLParen):
         return _parse_parens_group(rest, [])
@@ -75,7 +80,9 @@ def _parse_parens_group(remaining: list[Token], group: _TokenNode) -> tuple[_Tok
 
 def _parse_expr(t: _TokenNode) -> Expr:
     if isinstance(t, TokenInt):
-        return IntLiteral(value=int(t.value))
+        return IntLiteral(value=t.value)
+    if isinstance(t, TokenFloat):
+        return FloatLiteral(value=t.value)
     elif isinstance(t, TokenSymbol):
         return SymbolLiteral(t.value)
     elif isinstance(t, TokenString):

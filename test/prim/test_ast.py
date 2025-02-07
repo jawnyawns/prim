@@ -1,11 +1,13 @@
 from prim.ast import (
     CallExpr,
     IfExpr,
+    FloatLiteral,
     IntLiteral,
     LambdaExpr,
     parse,
     SymbolLiteral,
     StringLiteral,
+    TokenFloat,
     TokenInt,
     TokenLParen,
     TokenRParen,
@@ -19,8 +21,11 @@ class TestAST(TestCase):
         with self.assertRaises(RuntimeError):
             parse([])
     
-    def test_parse_integer(self):
+    def test_parse_int(self):
         self.assertEqual(parse([TokenInt(123)]), IntLiteral(123))
+    
+    def test_parse_float(self):
+        self.assertEqual(parse([TokenFloat(-123.123)]), FloatLiteral(-123.123))
     
     def test_parse_symbol(self):
         self.assertEqual(parse([TokenSymbol("abc")]), SymbolLiteral("abc"))

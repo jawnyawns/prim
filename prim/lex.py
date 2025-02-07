@@ -25,6 +25,10 @@ class TokenInt(TokenNonParen):
     value: int
 
 @dataclass(frozen=True)
+class TokenFloat(TokenNonParen):
+    value: float
+
+@dataclass(frozen=True)
 class TokenSymbol(TokenNonParen):
     """
     A symbol is a sequence of characters that can represent many things:
@@ -41,12 +45,10 @@ class TokenString(TokenNonParen):
 
 ### TOKENIZATION ###
 
-_LPAREN_CHARS = frozenset("(")
-_RPAREN_CHARS = frozenset(")")
 _SPACE_CHARS = frozenset(string.whitespace)
-_INTEGER_START_CHARS = frozenset(string.digits + "-")
-_INTEGER_REST_CHARS = frozenset(string.digits)
-_INTEGER_END_CHARS = frozenset(string.whitespace + "()")
+_NUMBER_START_CHARS = frozenset(string.digits + "-")
+_NUMBER_END_CHARS = frozenset(string.whitespace + "()")
+_NUMBER_DIGIT_CHARS = frozenset(string.digits)
 _SYMBOL_START_CHARS = frozenset(string.ascii_lowercase)
 _SYMBOL_REST_CHARS = frozenset(string.ascii_lowercase + string.digits + "_")
 _SYMBOL_END_CHARS = frozenset(string.whitespace + "()")
@@ -62,14 +64,16 @@ def _tokenize_helper(source_code: str, tokens: list[Token]) -> tuple[list[Token]
     ch, rest = source_code[0], source_code[1:]
     if ch in _SPACE_CHARS:
         return _tokenize_helper(rest, tokens)
-    elif ch in _LPAREN_CHARS:
+    elif ch in "(":
         return _tokenize_helper(rest, tokens + [TokenLParen()])
-    elif ch in _RPAREN_CHARS:
+    elif ch in ")":
         return _tokenize_helper(rest, tokens + [TokenRParen()])
-    elif ch in _INTEGER_START_CHARS:
-        consumed, remaining = _consume_until_delimiter(source_code, _INTEGER_END_CHARS)
+    elif ch in _NUMBER_START_CHARS:
+        consumed, remaining = _consume_until_delimiter(source_code, _NUMBER_END_CHARS)
         if _is_valid_integer(consumed):
             return _tokenize_helper(remaining, tokens + [TokenInt(value=int(consumed))])
+        elif _is_valid_float(consumed):
+            return _tokenize_helper(remaining, tokens + [TokenFloat(value=float(consumed))])
         else:
             raise RuntimeError(f"Invalid integer '{consumed}'")
     elif ch in _SYMBOL_START_CHARS:
@@ -92,7 +96,22 @@ def _consume_until_delimiter(source_code: str, end_delimiters: frozenset[str]) -
     return source_code[:end], source_code[end:]
 
 def _is_valid_integer(text: str) -> bool:
-    return text[0] in _INTEGER_START_CHARS and all(c in _INTEGER_REST_CHARS for c in text[1:]) if text else False
+    without_negative = _without_negative(text)
+    return bool(without_negative) and all(c in _NUMBER_DIGIT_CHARS for c in without_negative)
+
+def _is_valid_float(text: str) -> bool:
+    if "." not in text:
+        return False
+    prefix, suffix, *rest = text.split(".")
+    prefix_without_negative = _without_negative(prefix)
+    return (
+        bool(prefix_without_negative) and bool(suffix) and not rest and
+        all(c in _NUMBER_DIGIT_CHARS for c in prefix_without_negative) and
+        all(c in _NUMBER_DIGIT_CHARS for c in suffix)
+    )
+
+def _without_negative(text: str) -> str:
+    return text[1:] if text.startswith("-") else text
 
 def _is_valid_symbol(text: str) -> bool:
     return text[0] in _SYMBOL_START_CHARS and all(c in _SYMBOL_REST_CHARS for c in text[1:]) if text else False

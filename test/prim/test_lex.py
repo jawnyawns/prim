@@ -1,11 +1,12 @@
 from unittest import TestCase
 from prim.lex import (
+    TokenFloat,
     TokenInt,
     tokenize,
     TokenLParen,
     TokenRParen,
-    TokenSymbol,
     TokenString,
+    TokenSymbol,
 )
 
 class TestLex(TestCase):
@@ -23,15 +24,37 @@ class TestLex(TestCase):
         with self.assertRaises(RuntimeError):
             tokenize("(a-c)")
 
-    def test_tokenize_integer(self):
+    def test_tokenize_int(self):
         self.assertEqual(tokenize("123"), [TokenInt(123)])
     
-    def test_tokenize_negative_integer(self):
+    def test_tokenize_negative_int(self):
         self.assertEqual(tokenize("-123"), [TokenInt(-123)])
 
-    def test_tokenize_invalid_integer(self):
+    def test_tokenize_invalid_int_bad_interior_char(self):
         with self.assertRaises(RuntimeError):
             tokenize("1-2")
+    
+    def test_tokenize_invalid_int_no_digits(self):
+        with self.assertRaises(RuntimeError):
+            tokenize("-")
+    
+    def test_tokenize_float(self):
+        self.assertEqual(tokenize("123.123"), [TokenFloat(123.123)])
+
+    def test_tokenize_negative_float(self):
+        self.assertEqual(tokenize("-123.0"), [TokenFloat(-123.0)])
+    
+    def test_tokenize_invalid_float_no_suffix(self):
+        with self.assertRaises(RuntimeError):
+            tokenize("12.")
+
+    def test_tokenize_invalid_float_no_prefix(self):
+        with self.assertRaises(RuntimeError):
+            tokenize(".123")
+
+    def test_tokenize_invalid_float_invalid_prefix(self):
+        with self.assertRaises(RuntimeError):
+            tokenize("-.123")
 
     def test_tokenize_parentheses(self):
         self.assertEqual(

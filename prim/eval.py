@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from prim.ast import (
     CallExpr,
     Expr,
+    FloatLiteral,
     IfExpr,
     IntLiteral,
     LambdaExpr,
@@ -76,11 +77,11 @@ def base_env() -> Frame:
 class Closure:
     params: list[str]
     body: Expr
-    env: "Frame"
+    env: Frame
+
+Value = int | float | bool | str | Builtin | Closure
 
 ### EVALUATION ###
-
-Value = int | bool | str | Builtin | Closure
 
 def eval(expr: Expr) -> Value:
     env = base_env()
@@ -88,7 +89,9 @@ def eval(expr: Expr) -> Value:
 
 def _eval_expr(expr: Expr, env: Frame) -> Value:
     if isinstance(expr, IntLiteral):
-        return int(expr.value)
+        return expr.value
+    elif isinstance(expr, FloatLiteral):
+        return expr.value
     elif isinstance(expr, SymbolLiteral):
         return _eval_symbol(expr, env)
     elif isinstance(expr, StringLiteral):
