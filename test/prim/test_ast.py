@@ -70,13 +70,13 @@ class TestAST(TestCase):
             parse(
                 [
                     TokenLParen(),
-                    TokenSymbol('add'),
+                    TokenSymbol('+'),
                     TokenInt(1),
                     TokenInt(2),
                     TokenRParen(),
                 ]
             ),
-            CallExpr(operator=SymbolLiteral('add'), args=[IntLiteral(1), IntLiteral(2)])
+            CallExpr(operator=SymbolLiteral('+'), args=[IntLiteral(1), IntLiteral(2)])
         )
     
     def test_parse_boolean_expr(self):
@@ -84,13 +84,13 @@ class TestAST(TestCase):
             parse(
                 [
                     TokenLParen(),
-                    TokenSymbol('eq'),
+                    TokenSymbol('='),
                     TokenInt(1),
                     TokenInt(1),
                     TokenRParen(),
                 ]
             ),
-            CallExpr(operator=SymbolLiteral('eq'), args=[IntLiteral(1), IntLiteral(1)])
+            CallExpr(operator=SymbolLiteral('='), args=[IntLiteral(1), IntLiteral(1)])
         )
     
     def test_parse_if(self):
@@ -100,7 +100,7 @@ class TestAST(TestCase):
                     TokenLParen(),
                     TokenSymbol(value='if'),
                     TokenLParen(),
-                    TokenSymbol(value='lt'),
+                    TokenSymbol(value='<'),
                     TokenInt(value=1),
                     TokenInt(value=2),
                     TokenRParen(),
@@ -112,7 +112,7 @@ class TestAST(TestCase):
             IfExpr(
                 conditions=[
                     CallExpr(
-                        operator=SymbolLiteral(value='lt'),
+                        operator=SymbolLiteral(value='<'),
                         args=[IntLiteral(value=1), IntLiteral(value=2)]
                     )
                 ],

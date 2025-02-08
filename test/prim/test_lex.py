@@ -20,9 +20,12 @@ class TestLex(TestCase):
     def test_tokenize_symbol(self):
         self.assertEqual(tokenize("abc"), [TokenSymbol("abc")])
     
+    def test_tokenize_symbol_unusual(self):
+        self.assertEqual(tokenize("_<>=+-*/?"), [TokenSymbol("_<>=+-*/?")])
+    
     def test_tokenize_invalid_symbol(self):
         with self.assertRaises(RuntimeError):
-            tokenize("(a-c)")
+            tokenize("abc%")
 
     def test_tokenize_int(self):
         self.assertEqual(tokenize("123"), [TokenInt(123)])
@@ -33,10 +36,6 @@ class TestLex(TestCase):
     def test_tokenize_invalid_int_bad_interior_char(self):
         with self.assertRaises(RuntimeError):
             tokenize("1-2")
-    
-    def test_tokenize_invalid_int_no_digits(self):
-        with self.assertRaises(RuntimeError):
-            tokenize("-")
     
     def test_tokenize_float(self):
         self.assertEqual(tokenize("123.123"), [TokenFloat(123.123)])
@@ -67,10 +66,10 @@ class TestLex(TestCase):
 
     def test_tokenize_combination(self):
         self.assertEqual(
-            tokenize("(lt x 5)"),
+            tokenize("(< x 5)"),
             [
                 TokenLParen(),
-                TokenSymbol("lt"),
+                TokenSymbol("<"),
                 TokenSymbol("x"),
                 TokenInt(5),
                 TokenRParen(),

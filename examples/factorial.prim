@@ -3,9 +3,9 @@
     (factorial factorial 5)
   )
   (lambda (factorial n)
-    (if (eq n 0)
+    (if (= n 0)
       1
-      (mul n (factorial factorial (sub n 1)))
+      (* n (factorial factorial (- n 1)))
     )
   )
 )

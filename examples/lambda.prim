@@ -1,4 +1,4 @@
 (
-  (lambda (x y z) (mul z (add x y)))
+  (lambda (x y z) (* z (+ x y)))
   1 2 3
 )

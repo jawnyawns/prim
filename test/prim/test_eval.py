@@ -42,7 +42,7 @@ class TestEval(TestCase):
     def test_eval_builtins(self):
         self.assertEqual(
             eval(
-                CallExpr(operator=SymbolLiteral('add'), args=[IntLiteral(1), IntLiteral(2)])
+                CallExpr(operator=SymbolLiteral('+'), args=[IntLiteral(1), IntLiteral(2)])
             ),
             3
         )
@@ -51,14 +51,14 @@ class TestEval(TestCase):
         self.assertEqual(
             eval(
                 CallExpr(
-                    operator=SymbolLiteral(value='add'),
+                    operator=SymbolLiteral(value='+'),
                     args=[
                         IntLiteral(value=1),
                         CallExpr(
-                            operator=SymbolLiteral(value='mul'),
+                            operator=SymbolLiteral(value='*'),
                             args=[
                                 CallExpr(
-                                    operator=SymbolLiteral(value='sub'),
+                                    operator=SymbolLiteral(value='-'),
                                     args=[
                                         FloatLiteral(value=-2.1),
                                         FloatLiteral(value=3.14)
@@ -76,7 +76,7 @@ class TestEval(TestCase):
     def test_eval_boolean_expr_with_ints(self):
         self.assertEqual(
             eval(
-                CallExpr(operator=SymbolLiteral('eq'), args=[IntLiteral(1), IntLiteral(1)])
+                CallExpr(operator=SymbolLiteral('='), args=[IntLiteral(1), IntLiteral(1)])
             ),
             True
         )
@@ -111,11 +111,11 @@ class TestEval(TestCase):
                 IfExpr(
                     conditions=[
                         CallExpr(
-                            operator=SymbolLiteral(value='gt'),
+                            operator=SymbolLiteral(value='>'),
                             args=[IntLiteral(value=1), IntLiteral(value=2)]
                         ),
                         CallExpr(
-                            operator=SymbolLiteral(value='lt'),
+                            operator=SymbolLiteral(value='<'),
                             args=[IntLiteral(value=1), IntLiteral(value=2)]
                         )
                     ],
