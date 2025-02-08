@@ -8,7 +8,7 @@ Prim is a programming language I am building. It is experimental, expect instabi
 
 Requires **Python 3.12** or higher.
 
-Here's an example of how to execute a Prim source code file via the Prim interpreter.
+Here's an example of how to execute a Prim program using the interpreter.
 
 ```
 python3 -m prim examples/factorial.prim

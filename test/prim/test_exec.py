@@ -47,3 +47,6 @@ class TestExec(TestCase):
             "i'm a raw string... here comes a backslash: \... here come a tab:	... and now an emoji: 🤓... and now some korean: 김치",
             exec(source_code)
         )
+
+    def test_exec_string_concat(self):
+        self.assertEqual("hello", exec('(++ "hell" "o")'))

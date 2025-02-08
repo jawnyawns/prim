@@ -38,6 +38,10 @@ class BoolBoolToBool(Builtin):
 class BoolToBool(Builtin):
     fn: Callable[[bool], bool]
 
+@dataclass(frozen=True)
+class StringStringToString(Builtin):
+    fn: Callable[[str, str], str]
+
 BUILTINS: Mapping[str, Builtin] = MappingProxyType({
     "+": NumberNumberToNumber(fn=lambda a, b: a + b),
     "-": NumberNumberToNumber(fn=lambda a, b: a - b),
@@ -51,6 +55,7 @@ BUILTINS: Mapping[str, Builtin] = MappingProxyType({
     "and": BoolBoolToBool(fn=lambda a, b: bool(a and b)),
     "or": BoolBoolToBool(fn=lambda a, b: bool(a or b)),
     "not": BoolToBool(fn=lambda a: not a),
+    "++": StringStringToString(fn=lambda a, b: a + b),
 })
 
 ### ENVIRONMENT ###
@@ -159,6 +164,13 @@ def _eval_call_builtin(operator: Builtin, args: list[Value]) -> Value:
         if not isinstance(a, bool):
             raise RuntimeError("Expected 2 boolean arguments")
         return operator.fn(a)
+    elif isinstance(operator, StringStringToString):
+        if len(args) != 2:
+            raise RuntimeError("Expected 2 arguments")
+        a, b = args
+        if not isinstance(a, str) or not isinstance(b, str):
+            raise RuntimeError("Expected 2 string arguments")
+        return operator.fn(a, b)
     raise RuntimeError(f"Unsupported operator: {operator}")
 
 def _eval_call_closure(operator: Closure, args: list[Value]) -> Value:
