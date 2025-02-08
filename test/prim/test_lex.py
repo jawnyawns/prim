@@ -21,7 +21,7 @@ class TestLex(TestCase):
         self.assertEqual(tokenize("abc"), [TokenSymbol("abc")])
     
     def test_tokenize_symbol_unusual(self):
-        self.assertEqual(tokenize("_<>=+-*/?"), [TokenSymbol("_<>=+-*/?")])
+        self.assertEqual(tokenize("_<>=+-*/?:"), [TokenSymbol("_<>=+-*/?:")])
     
     def test_tokenize_invalid_symbol(self):
         with self.assertRaises(RuntimeError):

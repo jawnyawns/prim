@@ -4,12 +4,14 @@ from prim.eval import (
     CallExpr,
     Closure,
     eval,
-    IfExpr,
     FloatLiteral,
+    IfExpr,
     IntLiteral,
     LambdaExpr,
-    SymbolLiteral,
+    ListEmpty,
+    ListNode,
     StringLiteral,
+    SymbolLiteral,
 )
 
 class TestEval(TestCase):
@@ -135,4 +137,54 @@ class TestEval(TestCase):
                 )
             ),
             "hey"
+        )
+
+    def test_eval_empty_list(self):
+        self.assertEqual(
+            eval(
+                CallExpr(
+                    operator=SymbolLiteral(value="list"),
+                    args=[]
+                )
+            ),
+            ListEmpty()
+        )
+    
+    def test_eval_list_prepend(self):
+        self.assertEqual(
+            ListNode(1, ListEmpty()),
+            eval(
+                CallExpr(
+                    operator=SymbolLiteral(value="::"),
+                    args=[
+                        IntLiteral(1),
+                        CallExpr(
+                            operator=SymbolLiteral(value="list"),
+                            args=[]
+                        )
+                    ]
+                )
+            )
+        )
+    
+    def test_eval_list_get_value(self):
+        self.assertEqual(
+            1,
+            eval(
+                CallExpr(
+                    operator=SymbolLiteral("value"),
+                    args=[
+                        CallExpr(
+                            operator=SymbolLiteral(value="::"),
+                            args=[
+                                IntLiteral(1),
+                                CallExpr(
+                                    operator=SymbolLiteral(value="list"),
+                                    args=[]
+                                )
+                            ]
+                        )
+                    ]
+                )
+            )
         )

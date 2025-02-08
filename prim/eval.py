@@ -42,6 +42,22 @@ class BoolToBool(Builtin):
 class StringStringToString(Builtin):
     fn: Callable[[str, str], str]
 
+@dataclass(frozen=True)
+class ListConstructor(Builtin):
+    fn: Callable[[], "List"]
+
+@dataclass(frozen=True)
+class PrependList(Builtin):
+    fn: Callable[["Value", "List"], "List"]
+
+@dataclass(frozen=True)
+class GetValueFromList(Builtin):
+    fn: Callable[["ListNode"], "Value"]
+
+@dataclass(frozen=True)
+class GetRestFromList(Builtin):
+    fn: Callable[["ListNode"], "List"]
+
 BUILTINS: Mapping[str, Builtin] = MappingProxyType({
     "+": NumberNumberToNumber(fn=lambda a, b: a + b),
     "-": NumberNumberToNumber(fn=lambda a, b: a - b),
@@ -56,6 +72,10 @@ BUILTINS: Mapping[str, Builtin] = MappingProxyType({
     "or": BoolBoolToBool(fn=lambda a, b: bool(a or b)),
     "not": BoolToBool(fn=lambda a: not a),
     "++": StringStringToString(fn=lambda a, b: a + b),
+    "list": ListConstructor(fn=lambda: ListEmpty()),
+    "::": PrependList(fn=lambda value, list: ListNode(value=value, rest=list)),
+    "value": GetValueFromList(fn=lambda list: list.value),
+    "rest": GetRestFromList(fn=lambda list: list.rest),
 })
 
 ### ENVIRONMENT ###
@@ -84,8 +104,20 @@ class Closure:
     body: Expr
     env: "Frame"
 
+class List:
+    pass
+
+@dataclass
+class ListEmpty(List):
+    pass
+
+@dataclass(frozen=True)
+class ListNode(List):
+    value: "Value"
+    rest: List
+
 Number = int | float
-Value = Number | bool | str | Builtin | Closure
+Value = Number | bool | str | Builtin | Closure | List
 
 ### EVALUATION ###
 
@@ -171,6 +203,31 @@ def _eval_call_builtin(operator: Builtin, args: list[Value]) -> Value:
         if not isinstance(a, str) or not isinstance(b, str):
             raise RuntimeError("Expected 2 string arguments")
         return operator.fn(a, b)
+    elif isinstance(operator, ListConstructor):
+        if len(args) != 0:
+            raise RuntimeError("Expected 0 arguments")
+        return operator.fn()
+    elif isinstance(operator, PrependList):
+        if len(args) != 2:
+            raise RuntimeError("Expected 2 arguments")
+        value, list = args
+        if not isinstance(value, Value) or not isinstance(list, List):
+            raise RuntimeError("Expected 2 arguments: a value, a list")
+        return operator.fn(value, list)
+    elif isinstance(operator, GetValueFromList):
+        if len(args) != 1:
+            raise RuntimeError("Expected 1 arguments")
+        list, = args
+        if not isinstance(list, ListNode):
+            raise RuntimeError("Expected 1 argument: a non-empty list")
+        return operator.fn(list)
+    elif isinstance(operator, GetRestFromList):
+        if len(args) != 1:
+            raise RuntimeError("Expected 1 arguments")
+        list, = args
+        if not isinstance(list, ListNode):
+            raise RuntimeError("Expected 1 argument: a non-empty list")
+        return operator.fn(list)
     raise RuntimeError(f"Unsupported operator: {operator}")
 
 def _eval_call_closure(operator: Closure, args: list[Value]) -> Value:

@@ -50,3 +50,9 @@ class TestExec(TestCase):
 
     def test_exec_string_concat(self):
         self.assertEqual("hello", exec('(++ "hell" "o")'))
+
+    def test_exec_list(self):
+        self.assertEqual(
+            2,
+            exec("(value (rest (:: 1 (:: 2 (:: 3 (list))))))")
+        )

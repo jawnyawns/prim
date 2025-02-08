@@ -48,8 +48,8 @@ class TokenString(TokenNonParen):
 _SPACE_CHARS = frozenset(string.whitespace)
 _NUMBER_DIGIT_CHARS = frozenset(string.digits)
 _NUMBER_END_CHARS = frozenset(string.whitespace + "()")
-_SYMBOL_START_CHARS = frozenset(string.ascii_letters + "_<>=+-*/?")
-_SYMBOL_REST_CHARS = frozenset(string.ascii_letters + string.digits + "_<>=+-*/?")
+_SYMBOL_START_CHARS = frozenset(string.ascii_letters + "_<>=+-*/?:")
+_SYMBOL_REST_CHARS = frozenset(string.ascii_letters + string.digits + "_<>=+-*/?:")
 _SYMBOL_END_CHARS = frozenset(string.whitespace + "()")
 _STRING_DELIMITER_CHARS = frozenset("\"")
 
