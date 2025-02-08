@@ -94,6 +94,9 @@ def _consume_until_delimiter(source_code: str, end_delimiters: frozenset[str]) -
     end = next(generator, len(source_code))
     return source_code[:end], source_code[end:]
 
+def _trim_leading_dash(text: str) -> str:
+    return text[1:] if text.startswith("-") else text
+
 def _starts_with_number(source_code: str) -> bool:
     first, *_ = list(_trim_leading_dash(source_code))
     return first in _NUMBER_DIGIT_CHARS
@@ -112,9 +115,6 @@ def _is_valid_float(text: str) -> bool:
         all(c in _NUMBER_DIGIT_CHARS for c in prefix_without_negative) and
         all(c in _NUMBER_DIGIT_CHARS for c in suffix)
     )
-
-def _trim_leading_dash(text: str) -> str:
-    return text[1:] if text.startswith("-") else text
 
 def _is_valid_symbol(text: str) -> bool:
     if not text:
