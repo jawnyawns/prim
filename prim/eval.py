@@ -23,12 +23,12 @@ class Builtin:
     pass
 
 @dataclass(frozen=True)
-class IntIntToInt(Builtin):
-    fn: Callable[[int, int], int]
+class NumberNumberToNumber(Builtin):
+    fn: Callable[["Number", "Number"], "Number"]
 
 @dataclass(frozen=True)
-class IntIntToBool(Builtin):
-    fn: Callable[[int, int], bool]
+class NumberNumberToBool(Builtin):
+    fn: Callable[["Number", "Number"], bool]
 
 @dataclass(frozen=True)
 class BoolBoolToBool(Builtin):
@@ -39,15 +39,15 @@ class BoolToBool(Builtin):
     fn: Callable[[bool], bool]
 
 BUILTINS: Mapping[str, Builtin] = MappingProxyType({
-    "add": IntIntToInt(fn=lambda a, b: a + b),
-    "sub": IntIntToInt(fn=lambda a, b: a - b),
-    "mul": IntIntToInt(fn=lambda a, b: a * b),
-    "div": IntIntToInt(fn=lambda a, b: a // b),
-    "eq": IntIntToBool(fn=lambda a, b: a == b),
-    "lt": IntIntToBool(fn=lambda a, b: a < b),
-    "gt": IntIntToBool(fn=lambda a, b: a > b),
-    "leq": IntIntToBool(fn=lambda a, b: a <= b),
-    "geq": IntIntToBool(fn=lambda a, b: a >= b),
+    "add": NumberNumberToNumber(fn=lambda a, b: a + b),
+    "sub": NumberNumberToNumber(fn=lambda a, b: a - b),
+    "mul": NumberNumberToNumber(fn=lambda a, b: a * b),
+    "div": NumberNumberToNumber(fn=lambda a, b: a / b),
+    "eq": NumberNumberToBool(fn=lambda a, b: a == b),
+    "lt": NumberNumberToBool(fn=lambda a, b: a < b),
+    "gt": NumberNumberToBool(fn=lambda a, b: a > b),
+    "leq": NumberNumberToBool(fn=lambda a, b: a <= b),
+    "geq": NumberNumberToBool(fn=lambda a, b: a >= b),
     "and": BoolBoolToBool(fn=lambda a, b: bool(a and b)),
     "or": BoolBoolToBool(fn=lambda a, b: bool(a or b)),
     "not": BoolToBool(fn=lambda a: not a),
@@ -77,9 +77,10 @@ def base_env() -> Frame:
 class Closure:
     params: list[str]
     body: Expr
-    env: Frame
+    env: "Frame"
 
-Value = int | float | bool | str | Builtin | Closure
+Number = int | float
+Value = Number | bool | str | Builtin | Closure
 
 ### EVALUATION ###
 
@@ -134,12 +135,15 @@ def _eval_call(expr: CallExpr, env: Frame) -> Value:
         raise RuntimeError(f"Unsupported operator: {operator}")
 
 def _eval_call_builtin(operator: Builtin, args: list[Value]) -> Value:
-    if isinstance(operator, (IntIntToInt, IntIntToBool)):
+    if isinstance(operator, (NumberNumberToNumber, NumberNumberToBool)):
         if len(args) != 2:
             raise RuntimeError("Expected 2 arguments")
         a, b = args
-        if not isinstance(a, int) or not isinstance(b, int):
-            raise RuntimeError("Expected 2 integer arguments")
+        if (
+            (not isinstance(a, int) and not isinstance(a, float)) or
+            (not isinstance(b, int) and not isinstance(b, float))
+        ):
+            raise RuntimeError("Expected 2 number arguments")
         return operator.fn(a, b)
     elif isinstance(operator, BoolBoolToBool):
         if len(args) != 2:

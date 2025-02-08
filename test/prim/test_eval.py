@@ -5,6 +5,7 @@ from prim.eval import (
     Closure,
     eval,
     IfExpr,
+    FloatLiteral,
     IntLiteral,
     LambdaExpr,
     SymbolLiteral,
@@ -44,6 +45,32 @@ class TestEval(TestCase):
                 CallExpr(operator=SymbolLiteral('add'), args=[IntLiteral(1), IntLiteral(2)])
             ),
             3
+        )
+    
+    def test_eval_builtins_complex_math(self):
+        self.assertEqual(
+            eval(
+                CallExpr(
+                    operator=SymbolLiteral(value='add'),
+                    args=[
+                        IntLiteral(value=1),
+                        CallExpr(
+                            operator=SymbolLiteral(value='mul'),
+                            args=[
+                                CallExpr(
+                                    operator=SymbolLiteral(value='sub'),
+                                    args=[
+                                        FloatLiteral(value=-2.1),
+                                        FloatLiteral(value=3.14)
+                                    ]
+                                ),
+                                IntLiteral(value=4)
+                            ]
+                        )
+                    ]
+                )
+            ),
+            -19.96
         )
     
     def test_eval_boolean_expr_with_ints(self):
