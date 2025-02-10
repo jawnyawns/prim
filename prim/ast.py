@@ -52,9 +52,16 @@ class IfExpr(Expr):
 
 _TokenNode = TokenNonParen | list["_TokenNode"]
 
-def parse(tokens: list[Token]) -> Expr:
-    token_node, _ = _parse_parens(tokens)
-    return _parse_expr(token_node)
+def parse(tokens: list[Token]) -> list[Expr]:
+    return _parse_exprs(tokens, [])
+
+def _parse_exprs(tokens: list[Token], acc: list[Expr]) -> list[Expr]:
+    if not tokens:
+        return acc
+    else:
+        token_node, remaining_tokens = _parse_parens(tokens)
+        expr = _parse_expr(token_node)
+        return _parse_exprs(remaining_tokens, acc + [expr])
 
 def _parse_parens(tokens: list[Token]) -> tuple[_TokenNode, list[Token]]:
     if not tokens:

@@ -16,7 +16,8 @@ else:
 with open(args.file, "r", encoding="utf-8") as source_file:
     source_code = source_file.read()
 
-value = exec(source_code)
+values = exec(source_code)
 
-if value:
-    print(value)
+if values:
+    for value in values:
+        print(value)

@@ -121,9 +121,9 @@ Value = Number | bool | str | Builtin | Closure | List
 
 ### EVALUATION ###
 
-def eval(expr: Expr) -> Value:
+def eval(exprs: list[Expr]) -> list[Value]:
     env = base_env()
-    return _eval_expr(expr, env)
+    return list(map(lambda expr: _eval_expr(expr, env), exprs))
 
 def _eval_expr(expr: Expr, env: Frame) -> Value:
     if isinstance(expr, IntLiteral):

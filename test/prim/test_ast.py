@@ -18,17 +18,16 @@ from unittest import TestCase
 
 class TestAST(TestCase):
     def test_parse_empty(self):
-        with self.assertRaises(RuntimeError):
-            parse([])
-    
+        self.assertEqual([], parse([]))
+   
     def test_parse_int(self):
-        self.assertEqual(parse([TokenInt(123)]), IntLiteral(123))
+        self.assertEqual(parse([TokenInt(123)]), [IntLiteral(123)])
     
     def test_parse_float(self):
-        self.assertEqual(parse([TokenFloat(-123.123)]), FloatLiteral(-123.123))
+        self.assertEqual(parse([TokenFloat(-123.123)]), [FloatLiteral(-123.123)])
     
     def test_parse_symbol(self):
-        self.assertEqual(parse([TokenSymbol("abc")]), SymbolLiteral("abc"))
+        self.assertEqual(parse([TokenSymbol("abc")]), [SymbolLiteral("abc")])
 
     def test_parse_lambda(self):
         self.assertEqual(
@@ -43,7 +42,7 @@ class TestAST(TestCase):
                     TokenRParen(),
                 ]
             ),
-            LambdaExpr(params=['x'], body=SymbolLiteral('x'))
+            [LambdaExpr(params=['x'], body=SymbolLiteral('x'))]
         )
     
     def test_parse_call(self):
@@ -62,7 +61,7 @@ class TestAST(TestCase):
                     TokenRParen(),
                 ]
             ),
-            CallExpr(operator=LambdaExpr(params=['x'], body=SymbolLiteral('x')), args=[IntLiteral(1)])
+            [CallExpr(operator=LambdaExpr(params=['x'], body=SymbolLiteral('x')), args=[IntLiteral(1)])]
         )
     
     def test_parse_builtins(self):
@@ -76,7 +75,7 @@ class TestAST(TestCase):
                     TokenRParen(),
                 ]
             ),
-            CallExpr(operator=SymbolLiteral('+'), args=[IntLiteral(1), IntLiteral(2)])
+            [CallExpr(operator=SymbolLiteral('+'), args=[IntLiteral(1), IntLiteral(2)])]
         )
     
     def test_parse_boolean_expr(self):
@@ -90,7 +89,7 @@ class TestAST(TestCase):
                     TokenRParen(),
                 ]
             ),
-            CallExpr(operator=SymbolLiteral('='), args=[IntLiteral(1), IntLiteral(1)])
+            [CallExpr(operator=SymbolLiteral('='), args=[IntLiteral(1), IntLiteral(1)])]
         )
     
     def test_parse_if(self):
@@ -109,16 +108,18 @@ class TestAST(TestCase):
                     TokenRParen()
                 ]
             ),
-            IfExpr(
-                conditions=[
-                    CallExpr(
-                        operator=SymbolLiteral(value='<'),
-                        args=[IntLiteral(value=1), IntLiteral(value=2)]
-                    )
-                ],
-                consequents=[IntLiteral(value=1)],
-                alternative=IntLiteral(value=2)
-            )
+            [
+                IfExpr(
+                    conditions=[
+                        CallExpr(
+                            operator=SymbolLiteral(value='<'),
+                            args=[IntLiteral(value=1), IntLiteral(value=2)]
+                        )
+                    ],
+                    consequents=[IntLiteral(value=1)],
+                    alternative=IntLiteral(value=2)
+                )
+            ]
         )
 
     def test_parse_string(self):
@@ -133,8 +134,10 @@ class TestAST(TestCase):
                     TokenRParen(),
                 ]
             ),
-            CallExpr(
-                operator=SymbolLiteral("hello"),
-                args=[StringLiteral("world"), StringLiteral("goodbye"), IntLiteral(123)]
-            )
+            [
+                CallExpr(
+                    operator=SymbolLiteral("hello"),
+                    args=[StringLiteral("world"), StringLiteral("goodbye"), IntLiteral(123)]
+                )
+            ]
         )
