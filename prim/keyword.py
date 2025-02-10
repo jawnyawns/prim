@@ -5,3 +5,4 @@ class Keyword(Enum):
     FALSE = "false"
     LAMBDA = "lambda"
     IF = "if"
+    DEFINE = "define"

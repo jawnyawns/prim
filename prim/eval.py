@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from prim.ast import (
     CallExpr,
+    DefineExpr,
     Expr,
     FloatLiteral,
     IfExpr,
     IntLiteral,
     LambdaExpr,
-    SymbolLiteral,
     StringLiteral,
+    SymbolLiteral,
 )
 from prim.keyword import Keyword
 from types import MappingProxyType
@@ -123,49 +124,59 @@ Value = Number | bool | str | Builtin | Closure | List
 
 def eval(exprs: list[Expr]) -> list[Value]:
     env = base_env()
-    return list(map(lambda expr: _eval_expr(expr, env), exprs))
+    return _eval_exprs(exprs, env, [])
 
-def _eval_expr(expr: Expr, env: Frame) -> Value:
+def _eval_exprs(exprs: list[Expr], env: Frame, values_acc: list[Value]) -> list[Value]:
+    if not exprs:
+        return values_acc
+    expr, *rest = exprs
+    value, new_env = _eval_expr(expr, env)
+    return _eval_exprs(rest, new_env, values_acc + [value])
+
+def _eval_expr(expr: Expr, env: Frame) -> tuple[Value, Frame]:
     if isinstance(expr, IntLiteral):
-        return expr.value
+        return expr.value, env
     elif isinstance(expr, FloatLiteral):
-        return expr.value
+        return expr.value, env
     elif isinstance(expr, SymbolLiteral):
         return _eval_symbol(expr, env)
     elif isinstance(expr, StringLiteral):
-        return str(expr.value)
+        return str(expr.value), env
     elif isinstance(expr, LambdaExpr):
-        return Closure(params=expr.params, body=expr.body, env=env)
+        return Closure(params=expr.params, body=expr.body, env=env), env
     elif isinstance(expr, IfExpr):
         return _eval_if(expr, env)
     elif isinstance(expr, CallExpr):
         return _eval_call(expr, env)
+    elif isinstance(expr, DefineExpr):
+        return _eval_define(expr, env)
     else:
         raise RuntimeError(f"Unsupported expression: {expr}")
 
-def _eval_symbol(expr: SymbolLiteral, env: Frame) -> Value:
+def _eval_symbol(expr: SymbolLiteral, env: Frame) -> tuple[Value, Frame]:
     if expr.value == Keyword.TRUE.value:
-        return True
+        return True, env
     elif expr.value == Keyword.FALSE.value:
-        return False
-    if env is None:
-        raise RuntimeError(f"Undefined identifier: {expr.value}")
+        return False, env
     value = env.get(expr.value)
     if value is None:
         raise RuntimeError(f"Undefined identifier: {expr.value}")
-    return value
+    return value, env
 
-def _eval_if(expr: IfExpr, env: Frame) -> Value:
+def _eval_if(expr: IfExpr, env: Frame) -> tuple[Value, Frame]:
     for condition, consequent in zip(expr.conditions, expr.consequents):
-        if _eval_expr(condition, env):
+        condition_value, _ = _eval_expr(condition, env)
+        if not isinstance(condition_value, bool):
+            raise RuntimeError("If condition must be a boolean expression")
+        if condition_value:
             return _eval_expr(consequent, env)
     return _eval_expr(expr.alternative, env)
 
-def _eval_call(expr: CallExpr, env: Frame) -> Value:
-    operator = _eval_expr(expr.operator, env)
-    args = [_eval_expr(arg, env) for arg in expr.args]
+def _eval_call(expr: CallExpr, env: Frame) -> tuple[Value, Frame]:
+    operator, _ = _eval_expr(expr.operator, env)
+    args = [_eval_expr(arg, env)[0] for arg in expr.args]
     if isinstance(operator, Builtin):
-        return _eval_call_builtin(operator, args)
+        return _eval_call_builtin(operator, args), env
     elif isinstance(operator, Closure):
         return _eval_call_closure(operator, args)
     else:
@@ -230,7 +241,7 @@ def _eval_call_builtin(operator: Builtin, args: list[Value]) -> Value:
         return operator.fn(list)
     raise RuntimeError(f"Unsupported operator: {operator}")
 
-def _eval_call_closure(operator: Closure, args: list[Value]) -> Value:
+def _eval_call_closure(operator: Closure, args: list[Value]) -> tuple[Value, Frame]:
     if len(args) != len(operator.params):
         raise RuntimeError("Argument count mismatch")
     bindings = MappingProxyType({
@@ -241,3 +252,12 @@ def _eval_call_closure(operator: Closure, args: list[Value]) -> Value:
         parent=operator.env
     )
     return _eval_expr(operator.body, child_env)
+
+def _eval_define(expr: DefineExpr, env: Frame) -> tuple[Value, Frame]:
+    return "<ENV MODIFIED>", Frame(
+        bindings=MappingProxyType({
+            **env.bindings,
+            expr.name: _eval_expr(expr.body, env)[0]
+        }),
+        parent=env.parent
+    )

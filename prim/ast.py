@@ -48,6 +48,11 @@ class IfExpr(Expr):
     consequents: list[Expr]
     alternative: Expr
 
+@dataclass(frozen=True)
+class DefineExpr(Expr):
+    name: str
+    body: Expr
+
 ### PARSING ###
 
 _TokenNode = TokenNonParen | list["_TokenNode"]
@@ -100,6 +105,8 @@ def _parse_expr(t: _TokenNode) -> Expr:
             return _parse_lambda(t)
         elif operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.IF.value:
             return _parse_if(t)
+        elif operator and isinstance(operator, TokenSymbol) and operator.value == Keyword.DEFINE.value:
+            return _parse_define(t)
         else:
             return _parse_call(t)
     else:
@@ -133,6 +140,18 @@ def _parse_if(t: _TokenNode) -> IfExpr:
         conditions=list(map(lambda t: _parse_expr(t), conditions)),
         consequents=list(map(lambda t: _parse_expr(t), consequents)), 
         alternative=_parse_expr(default)
+    )
+
+def _parse_define(t: _TokenNode) -> DefineExpr:
+    if not isinstance(t, list) or len(t) != 3:
+        raise RuntimeError("Malformed define expression")
+    _, name, body = t
+    parsed_name = _parse_expr(name)
+    if not isinstance(parsed_name, SymbolLiteral):
+        raise RuntimeError("Invalid name in definition")
+    return DefineExpr(
+        name=parsed_name.value,
+        body=_parse_expr(body),
     )
 
 def _parse_call(t: _TokenNode) -> CallExpr:

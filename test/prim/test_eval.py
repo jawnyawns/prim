@@ -3,6 +3,7 @@ from prim.eval import (
     base_env,
     CallExpr,
     Closure,
+    DefineExpr,
     eval,
     FloatLiteral,
     IfExpr,
@@ -186,5 +187,32 @@ class TestEval(TestCase):
                         )
                     ]
                 )
+            ])
+        )
+
+    def test_eval_define(self):
+        self.assertEqual(
+            ['<ENV MODIFIED>', 9],
+            eval([
+                DefineExpr(
+                    name='f',
+                    body=LambdaExpr(
+                        params=['x', 'y', 'z'],
+                        body=CallExpr(
+                            operator=SymbolLiteral(value='*'),
+                            args=[
+                                SymbolLiteral(value='z'),
+                                CallExpr(
+                                    operator=SymbolLiteral(value='+'),
+                                    args=[SymbolLiteral(value='x'), SymbolLiteral(value='y')]
+                                )
+                            ]
+                        )
+                    )
+                ),
+                CallExpr(
+                    operator=SymbolLiteral(value='f'),
+                    args=[IntLiteral(value=1), IntLiteral(value=2), IntLiteral(value=3)]
+                ),
             ])
         )
