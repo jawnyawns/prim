@@ -21,7 +21,21 @@ class TestExec(TestCase):
         )
         """
         self.assertEqual([120], exec(source_code))
-    
+
+    def test_exec_factorial_with_define(self):
+        source_code = """
+        (define factorial
+          (lambda (n)
+            (if (= n 0)
+              1
+              (* n (factorial (- n 1)))
+            )
+          )
+        )
+        (factorial 5)
+        """
+        self.assertEqual(["<DEFINITION ADDED>", 120], exec(source_code))
+
     def test_exec_if(self):
         source_code = """
         (if 

@@ -192,7 +192,7 @@ class TestEval(TestCase):
 
     def test_eval_define(self):
         self.assertEqual(
-            ['<ENV MODIFIED>', 9],
+            ['<DEFINITION ADDED>', 9],
             eval([
                 DefineExpr(
                     name='f',
@@ -214,5 +214,35 @@ class TestEval(TestCase):
                     operator=SymbolLiteral(value='f'),
                     args=[IntLiteral(value=1), IntLiteral(value=2), IntLiteral(value=3)]
                 ),
+            ])
+        )
+
+    def test_eval_define_recursive(self):
+        self.assertEqual(
+            ['<DEFINITION ADDED>', 0],
+            eval([
+                DefineExpr(
+                    name='f',
+                    body=LambdaExpr(
+                        params=['n'],
+                        body=IfExpr(
+                            conditions=[
+                                CallExpr(
+                                    operator=SymbolLiteral(value='='),
+                                    args=[SymbolLiteral(value='n'), IntLiteral(value=0)])],
+                                    consequents=[IntLiteral(value=0)],
+                                    alternative=CallExpr(
+                                        operator=SymbolLiteral(value='f'),
+                                        args=[
+                                            CallExpr(
+                                                operator=SymbolLiteral(value='-'),
+                                                args=[SymbolLiteral(value='n'), IntLiteral(value=1)]
+                                            )
+                                        ]
+                                    )
+                        )
+                    )
+                ),
+                CallExpr(operator=SymbolLiteral(value='f'), args=[IntLiteral(value=5)]),
             ])
         )

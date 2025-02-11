@@ -83,16 +83,27 @@ BUILTINS: Mapping[str, Builtin] = MappingProxyType({
 
 @dataclass(frozen=True)
 class Frame:
-    bindings: Mapping[str, "Value"]
+    bindings: Mapping[str, "Value" | Callable[[], "Closure"]]
     parent: Optional["Frame"]
 
-    def get(self, name: str) -> Optional["Value"]:
+    def get(self, name: str) -> Optional[tuple["Value", "Frame"]]:
         if name in self.bindings:
-            return self.bindings[name]
+            value_or_thunk = self.bindings[name]
+            if callable(value_or_thunk):
+                value = value_or_thunk()
+                return value, extend_frame(self, name, value)
+            else:
+                return value_or_thunk, self
         elif self.parent:
             return self.parent.get(name)
         else:
             return None
+
+def extend_frame(env: Frame, name: str, value_or_thunk: "Value" | Callable[[], "Closure"]) -> Frame:
+    return Frame(
+        bindings=MappingProxyType({**env.bindings, name: value_or_thunk}),
+        parent=env.parent
+    )
 
 def base_env() -> Frame:
     return Frame(bindings=BUILTINS, parent=None)
@@ -158,10 +169,11 @@ def _eval_symbol(expr: SymbolLiteral, env: Frame) -> tuple[Value, Frame]:
         return True, env
     elif expr.value == Keyword.FALSE.value:
         return False, env
-    value = env.get(expr.value)
-    if value is None:
-        raise RuntimeError(f"Undefined identifier: {expr.value}")
-    return value, env
+    value_and_new_env = env.get(expr.value)
+    if value_and_new_env is None:
+        raise RuntimeError(f"Unbound variable: {expr.value}")
+    else:
+        return value_and_new_env
 
 def _eval_if(expr: IfExpr, env: Frame) -> tuple[Value, Frame]:
     for condition, consequent in zip(expr.conditions, expr.consequents):
@@ -254,10 +266,12 @@ def _eval_call_closure(operator: Closure, args: list[Value]) -> tuple[Value, Fra
     return _eval_expr(operator.body, child_env)
 
 def _eval_define(expr: DefineExpr, env: Frame) -> tuple[Value, Frame]:
-    return "<ENV MODIFIED>", Frame(
-        bindings=MappingProxyType({
-            **env.bindings,
-            expr.name: _eval_expr(expr.body, env)[0]
-        }),
-        parent=env.parent
-    )
+    if isinstance(expr.body, LambdaExpr):
+        def closure_thunk() -> Closure:
+            assert isinstance(expr.body, LambdaExpr)
+            return Closure(params=expr.body.params, body=expr.body.body, env=new_env)
+        new_env = extend_frame(env, expr.name, closure_thunk)
+        return "<DEFINITION ADDED>", new_env
+    else:
+        value, _ = _eval_expr(expr.body, env)
+        return "<DEFINITION ADDED>", extend_frame(env, expr.name, value)
