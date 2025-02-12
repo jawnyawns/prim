@@ -91,7 +91,7 @@ class Frame:
             value_or_thunk = self.bindings[name]
             if callable(value_or_thunk):
                 value = value_or_thunk()
-                return value, extend_frame(self, name, value)
+                return value, extend_frame(self, {name: value})
             else:
                 return value_or_thunk, self
         elif self.parent:
@@ -99,9 +99,9 @@ class Frame:
         else:
             return None
 
-def extend_frame(env: Frame, name: str, value_or_thunk: "Value" | Callable[[], "Closure"]) -> Frame:
+def extend_frame(env: Frame, bindings: Mapping[str, "Value" | Callable[[], "Closure"]]) -> Frame:
     return Frame(
-        bindings=MappingProxyType({**env.bindings, name: value_or_thunk}),
+        bindings=MappingProxyType({**env.bindings, **bindings}),
         parent=env.parent
     )
 
@@ -266,12 +266,16 @@ def _eval_call_closure(operator: Closure, args: list[Value]) -> tuple[Value, Fra
     return _eval_expr(operator.body, child_env)
 
 def _eval_define(expr: DefineExpr, env: Frame) -> tuple[Value, Frame]:
-    if isinstance(expr.body, LambdaExpr):
-        def closure_thunk() -> Closure:
-            assert isinstance(expr.body, LambdaExpr)
-            return Closure(params=expr.body.params, body=expr.body.body, env=new_env)
-        new_env = extend_frame(env, expr.name, closure_thunk)
-        return "<DEFINITION ADDED>", new_env
-    else:
-        value, _ = _eval_expr(expr.body, env)
-        return "<DEFINITION ADDED>", extend_frame(env, expr.name, value)
+    values_and_thunks = list(map(
+        lambda body:
+            (lambda: Closure(params=body.params, body=body.body, env=new_env))
+            if isinstance(body, LambdaExpr)
+            else _eval_expr(body, env)[0],
+        expr.bodies
+    ))
+
+    new_env = extend_frame(env, {
+        name: value_or_thunk for name, value_or_thunk in zip(expr.names, values_and_thunks)
+    })
+
+    return "<DEFINITION(S) ADDED>", new_env

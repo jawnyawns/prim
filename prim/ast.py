@@ -50,8 +50,8 @@ class IfExpr(Expr):
 
 @dataclass(frozen=True)
 class DefineExpr(Expr):
-    name: str
-    body: Expr
+    names: list[str]
+    bodies: list[Expr]
 
 ### PARSING ###
 
@@ -143,16 +143,21 @@ def _parse_if(t: _TokenNode) -> IfExpr:
     )
 
 def _parse_define(t: _TokenNode) -> DefineExpr:
-    if not isinstance(t, list) or len(t) != 3:
-        raise RuntimeError("Malformed define expression")
-    _, name, body = t
-    parsed_name = _parse_expr(name)
-    if not isinstance(parsed_name, SymbolLiteral):
-        raise RuntimeError("Invalid name in definition")
+    if not isinstance(t, list) or len(t) < 3 or len(t) % 2 == 0:
+        raise RuntimeError(f"Malformed define expression")
+    _, *rest = t
+    names = rest[::2]
+    bodies = rest[1::2]
     return DefineExpr(
-        name=parsed_name.value,
-        body=_parse_expr(body),
+        names=list(map(_parse_define_name, names)),
+        bodies=list(map(lambda body: _parse_expr(body), bodies)),
     )
+
+def _parse_define_name(t: _TokenNode) -> str:
+    if isinstance(t, TokenSymbol):
+        return t.value
+    else:
+        raise RuntimeError("Invalid name in definition")
 
 def _parse_call(t: _TokenNode) -> CallExpr:
     if not isinstance(t, list) or len(t) == 0:

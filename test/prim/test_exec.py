@@ -34,7 +34,7 @@ class TestExec(TestCase):
         )
         (factorial 5)
         """
-        self.assertEqual(["<DEFINITION ADDED>", 120], exec(source_code))
+        self.assertEqual(["<DEFINITION(S) ADDED>", 120], exec(source_code))
 
     def test_exec_if(self):
         source_code = """

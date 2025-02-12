@@ -192,23 +192,25 @@ class TestEval(TestCase):
 
     def test_eval_define(self):
         self.assertEqual(
-            ['<DEFINITION ADDED>', 9],
+            ['<DEFINITION(S) ADDED>', 9],
             eval([
                 DefineExpr(
-                    name='f',
-                    body=LambdaExpr(
-                        params=['x', 'y', 'z'],
-                        body=CallExpr(
-                            operator=SymbolLiteral(value='*'),
-                            args=[
-                                SymbolLiteral(value='z'),
-                                CallExpr(
-                                    operator=SymbolLiteral(value='+'),
-                                    args=[SymbolLiteral(value='x'), SymbolLiteral(value='y')]
-                                )
-                            ]
+                    names='f',
+                    bodies=[
+                        LambdaExpr(
+                            params=['x', 'y', 'z'],
+                            body=CallExpr(
+                                operator=SymbolLiteral(value='*'),
+                                args=[
+                                    SymbolLiteral(value='z'),
+                                    CallExpr(
+                                        operator=SymbolLiteral(value='+'),
+                                        args=[SymbolLiteral(value='x'), SymbolLiteral(value='y')]
+                                    )
+                                ]
+                            )
                         )
-                    )
+                    ]
                 ),
                 CallExpr(
                     operator=SymbolLiteral(value='f'),
@@ -219,29 +221,31 @@ class TestEval(TestCase):
 
     def test_eval_define_recursive(self):
         self.assertEqual(
-            ['<DEFINITION ADDED>', 0],
+            ['<DEFINITION(S) ADDED>', 0],
             eval([
                 DefineExpr(
-                    name='f',
-                    body=LambdaExpr(
-                        params=['n'],
-                        body=IfExpr(
-                            conditions=[
-                                CallExpr(
-                                    operator=SymbolLiteral(value='='),
-                                    args=[SymbolLiteral(value='n'), IntLiteral(value=0)])],
-                                    consequents=[IntLiteral(value=0)],
-                                    alternative=CallExpr(
-                                        operator=SymbolLiteral(value='f'),
-                                        args=[
-                                            CallExpr(
-                                                operator=SymbolLiteral(value='-'),
-                                                args=[SymbolLiteral(value='n'), IntLiteral(value=1)]
-                                            )
-                                        ]
-                                    )
+                    names=['f'],
+                    bodies=[
+                        LambdaExpr(
+                            params=['n'],
+                            body=IfExpr(
+                                conditions=[
+                                    CallExpr(
+                                        operator=SymbolLiteral(value='='),
+                                        args=[SymbolLiteral(value='n'), IntLiteral(value=0)])],
+                                        consequents=[IntLiteral(value=0)],
+                                        alternative=CallExpr(
+                                            operator=SymbolLiteral(value='f'),
+                                            args=[
+                                                CallExpr(
+                                                    operator=SymbolLiteral(value='-'),
+                                                    args=[SymbolLiteral(value='n'), IntLiteral(value=1)]
+                                                )
+                                            ]
+                                        )
+                            )
                         )
-                    )
+                    ]
                 ),
                 CallExpr(operator=SymbolLiteral(value='f'), args=[IntLiteral(value=5)]),
             ])

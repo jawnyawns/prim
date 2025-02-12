@@ -1,0 +1,6 @@
+(define 
+  is-even? (lambda (n) (if (= n 0) true  (is-odd?  (- n 1))))
+  is-odd?  (lambda (n) (if (= n 0) false (is-even? (- n 1)))))
+
+(is-even? 14)
+(is-even? 15)
